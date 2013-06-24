@@ -59,7 +59,7 @@ if(MINGW)
   endif()
 
   # Use mingw's sprintf instead of windows's
-  add_definitions(-D__USE_MINGW_ANSI_STDIO=1)
+  add_definitions(-D__USE_MINGW_ANSI_STDIO=1) 
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
