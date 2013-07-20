@@ -77,6 +77,7 @@ struct CV_EXPORTS Matx_AddOp {};
 struct CV_EXPORTS Matx_SubOp {};
 struct CV_EXPORTS Matx_ScaleOp {};
 struct CV_EXPORTS Matx_MulOp {};
+struct CV_EXPORTS Matx_DivOp {};
 struct CV_EXPORTS Matx_MatMulOp {};
 struct CV_EXPORTS Matx_TOp {};
 
@@ -162,6 +163,9 @@ public:
     //! multiply two matrices element-wise
     Matx<_Tp, m, n> mul(const Matx<_Tp, m, n>& a) const;
 
+    //! divide two matrices element-wise
+    Matx<_Tp, m, n> div(const Matx<_Tp, m, n>& a) const;
+
     //! element access
     const _Tp& operator ()(int i, int j) const;
     _Tp& operator ()(int i, int j);
@@ -174,6 +178,7 @@ public:
     Matx(const Matx<_Tp, m, n>& a, const Matx<_Tp, m, n>& b, Matx_SubOp);
     template<typename _T2> Matx(const Matx<_Tp, m, n>& a, _T2 alpha, Matx_ScaleOp);
     Matx(const Matx<_Tp, m, n>& a, const Matx<_Tp, m, n>& b, Matx_MulOp);
+    Matx(const Matx<_Tp, m, n>& a, const Matx<_Tp, m, n>& b, Matx_DivOp);
     template<int l> Matx(const Matx<_Tp, m, l>& a, const Matx<_Tp, l, n>& b, Matx_MatMulOp);
     Matx(const Matx<_Tp, n, m>& a, Matx_TOp);
 
@@ -746,6 +751,13 @@ Matx<_Tp,m,n>::Matx(const Matx<_Tp, m, n>& a, const Matx<_Tp, m, n>& b, Matx_Mul
         val[i] = saturate_cast<_Tp>(a.val[i] * b.val[i]);
 }
 
+template<typename _Tp, int m, int n> inline
+Matx<_Tp,m,n>::Matx(const Matx<_Tp, m, n>& a, const Matx<_Tp, m, n>& b, Matx_DivOp)
+{
+    for( int i = 0; i < channels; i++ )
+        val[i] = saturate_cast<_Tp>(a.val[i] / b.val[i]);
+}
+
 template<typename _Tp, int m, int n> template<int l> inline
 Matx<_Tp,m,n>::Matx(const Matx<_Tp, m, l>& a, const Matx<_Tp, l, n>& b, Matx_MatMulOp)
 {
@@ -771,6 +783,12 @@ template<typename _Tp, int m, int n> inline
 Matx<_Tp, m, n> Matx<_Tp, m, n>::mul(const Matx<_Tp, m, n>& a) const
 {
     return Matx<_Tp, m, n>(*this, a, Matx_MulOp());
+}
+
+template<typename _Tp, int m, int n> inline
+Matx<_Tp, m, n> Matx<_Tp, m, n>::div(const Matx<_Tp, m, n>& a) const
+{
+    return Matx<_Tp, m, n>(*this, a, Matx_DivOp());
 }
 
 template<typename _Tp, int m, int n> inline

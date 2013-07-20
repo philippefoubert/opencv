@@ -42,7 +42,9 @@
 
 #include "precomp.hpp"
 #if GTEST_OS_WINDOWS
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 # include <windows.h>
 #endif
 
@@ -278,7 +280,7 @@ enum GTestColor {
 };
 #if GTEST_OS_WINDOWS&&!GTEST_OS_WINDOWS_MOBILE
 // Returns the character attribute for the given color.
-WORD GetColorAttribute(GTestColor color) {
+static WORD GetColorAttribute(GTestColor color) {
     switch (color) {
     case COLOR_RED:    return FOREGROUND_RED;
     case COLOR_GREEN:  return FOREGROUND_GREEN;
@@ -330,20 +332,6 @@ void TestSystem::printMetrics(int is_accurate, double cpu_time, double gpu_time,
 {
     cout << setiosflags(ios_base::left);
     stringstream stream;
-
-#if 0
-    if(is_accurate == 1)
-            stream << "Pass";
-    else if(is_accurate_ == 0)
-            stream << "Fail";
-    else if(is_accurate == -1)
-        stream << " ";
-    else
-    {
-        std::cout<<"is_accurate errer: "<<is_accurate<<"\n";
-        exit(-1);
-    }
-#endif
 
     std::stringstream &cur_subtest_description = getCurSubtestDescription();
 
