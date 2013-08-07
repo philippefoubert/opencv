@@ -52,77 +52,107 @@ void CvCaptureCAM_XIMEA::init()
 {
     xiGetNumberDevices( &numDevices);
     hmv = NULL;
+    frame = NULL;
+    timeout = 0;
     memset(&image, 0, sizeof(XI_IMG));
 }
 
 
 /**********************************************************************************/
 // Initialize camera input
-bool CvCaptureCAM_XIMEA::open(int wIndex)
+bool CvCaptureCAM_XIMEA::open( int wIndex )
 {
-    bool res = true;
-    int mvret = XI_OK;
-
-    if(0 == numDevices)
+  bool res = true;
+  
+  int mvret = XI_OK;
+  
+  if(0 == numDevices)
+  {
+    res = false;
+  }
+  else if(XI_OK != (mvret = xiOpenDevice(wIndex, &hmv)))
+  {
+    errMsg("Open XI_DEVICE failed", mvret);
+    res = false;
+  }
+  else
+  {
+    int width = 0;
+    int height = 0;
+    int isColor = 0;
+    
+    // always use auto exposure/gain
+    if(XI_OK != (mvret = xiSetParamInt(hmv, XI_PRM_AEAG, 1)))
     {
       res = false;
     }
-    else if(XI_OK != (mvret = xiOpenDevice(wIndex, &hmv)))
+    else if(XI_OK != (mvret = xiGetParamInt(hmv, XI_PRM_WIDTH, &width)))
     {
-      errMsg("Open XI_DEVICE failed", mvret);
+      res = false;
+    }
+    else if(XI_OK != (mvret = xiGetParamInt(hmv, XI_PRM_HEIGHT, &height)))
+    {
+      res = false;
+    }
+    else if(XI_OK != (mvret = xiGetParamInt(hmv, XI_PRM_IMAGE_IS_COLOR, &isColor)))
+    {
       res = false;
     }
     else
     {
-      int width = 0;
-      int height = 0;
-      
-      // always use auto exposure/gain
-      if(XI_OK != (mvret = xiSetParamInt(hmv, XI_PRM_AEAG, 1)))
+      if(isColor)	// for color cameras
       {
-        res = false;
-      }
-      // always use auto white ballance
-      else if(XI_OK != (mvret = xiSetParamInt(hmv, XI_PRM_AUTO_WB, 1)))
-      {
-        res = false;
-      }
-      // default image format RGB24
-      else if(XI_OK != (mvret = xiSetParamInt(hmv, XI_PRM_IMAGE_DATA_FORMAT, XI_RGB24)))
-      {
-        res = false;
-      }
-      else if(XI_OK != (mvret = xiGetParamInt(hmv, XI_PRM_WIDTH, &width)))
-      {
-        res = false;
-      }
-      else if(XI_OK != (mvret = xiGetParamInt(hmv, XI_PRM_HEIGHT, &height)))
-      {
-        res = false;
-      }
-      else
-      {
-        // allocate frame buffer for RGB24 image
-        frame = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
-
-        //default capture timeout 10s
-        timeout = 10000;
-
-        if(XI_OK != (mvret = xiStartAcquisition(hmv)))
+        // default image format RGB24
+        if(XI_OK != (mvret = xiSetParamInt( hmv, XI_PRM_IMAGE_DATA_FORMAT, XI_RGB24)))
         {
-          errMsg("StartAcquisition XI_DEVICE failed", mvret);
           res = false;
         }
+        // always use auto white balance for color cameras
+        else if(XI_OK != (mvret = xiSetParamInt( hmv, XI_PRM_AUTO_WB, 1)))
+        {
+          res = false;
+        }
+        else
+        {
+          // allocate frame buffer for RGB24 image
+          frame = cvCreateImage(cvSize( width, height), IPL_DEPTH_8U, 3);
+        }
       }
-      
-      if(false == res)
+      else // for mono cameras
       {
-        errMsg("Open XI_DEVICE failed", mvret);
-        xiCloseDevice(hmv);
-        hmv = NULL;
+        // default image format MONO8
+        if(XI_OK != (mvret = xiSetParamInt( hmv, XI_PRM_IMAGE_DATA_FORMAT, XI_MONO8)))
+        {
+          res = false;
+        }
+        else
+        {
+          // allocate frame buffer for MONO8 image
+          frame = cvCreateImage(cvSize( width, height), IPL_DEPTH_8U, 1);
+        }
       }
     }
-    return res;
+  }
+  
+  if(true == res)
+  {
+    //default capture timeout 10s
+    timeout = 10000;
+  
+    if(XI_OK != xiStartAcquisition(hmv))
+    {
+      errMsg("StartAcquisition XI_DEVICE failed", mvret);
+      res = false;
+    }
+  }
+  
+  if(false == res)
+  {
+    errMsg("Open XI_DEVICE failed", mvret);
+    xiCloseDevice(hmv);
+    hmv = NULL;
+  }
+  return res;
 }
 
 /**********************************************************************************/
@@ -132,8 +162,11 @@ void CvCaptureCAM_XIMEA::close()
     if(frame)
         cvReleaseImage(&frame);
 
-    xiStopAcquisition(hmv);
-    xiCloseDevice(hmv);
+    if(hmv)
+    {
+        xiStopAcquisition(hmv);
+        xiCloseDevice(hmv);
+    }
     hmv = NULL;
 }
 
@@ -166,11 +199,11 @@ IplImage* CvCaptureCAM_XIMEA::retrieveFrame(int)
 {
     // update cvImage after format has changed
     resetCvImage();
-    
+
     // copy pixel data
     switch( image.frm)
     {
-    case XI_MONO8       : 
+    case XI_MONO8       :
     case XI_RAW8        : memcpy( frame->imageData, image.bp, image.width*image.height); break;
     case XI_MONO16      :
     case XI_RAW16       : memcpy( frame->imageData, image.bp, image.width*image.height*sizeof(WORD)); break;
@@ -200,9 +233,9 @@ void CvCaptureCAM_XIMEA::resetCvImage()
         {
         case XI_MONO8       :
         case XI_RAW8        : frame = cvCreateImage(cvSize( image.width, image.height), IPL_DEPTH_8U, 1); break;
-        case XI_MONO16      : 
+        case XI_MONO16      :
         case XI_RAW16       : frame = cvCreateImage(cvSize( image.width, image.height), IPL_DEPTH_16U, 1); break;
-        case XI_RGB24       : 
+        case XI_RGB24       :
         case XI_RGB_PLANAR  : frame = cvCreateImage(cvSize( image.width, image.height), IPL_DEPTH_8U, 3); break;
         case XI_RGB32       : frame = cvCreateImage(cvSize( image.width, image.height), IPL_DEPTH_8U, 4); break;
         default :
@@ -328,9 +361,9 @@ int  CvCaptureCAM_XIMEA::getBpp()
     {
     case XI_MONO8       :
     case XI_RAW8        : return 1;
-    case XI_MONO16      : 
+    case XI_MONO16      :
     case XI_RAW16       : return 2;
-    case XI_RGB24       : 
+    case XI_RGB24       :
     case XI_RGB_PLANAR  : return 3;
     case XI_RGB32       : return 4;
     default :

@@ -89,7 +89,7 @@ if(WITH_PVAPI)
 
     if(WIN32)
       if(MINGW)
-        add_definitions(-DPVDECL=__stdcall)
+        set(PVAPI_DEFINITIONS "-DPVDECL=__stdcall")
       endif(MINGW)
       set(PVAPI_LIBRARY "${_PVAPI_LIBRARY}/PvAPI.lib" CACHE PATH "The PvAPI library")
     else(WIN32)
@@ -264,3 +264,13 @@ if(WIN32)
     list(APPEND HIGHGUI_LIBRARIES winmm)
   endif()
 endif(WIN32)
+
+# --- Apple AV Foundation ---
+if(WITH_AVFOUNDATION)
+  set(HAVE_AVFOUNDATION YES)
+endif()
+
+# --- QuickTime ---
+if(WITH_QUICKTIME)
+  set(HAVE_QUICKTIME YES)
+endif()
