@@ -241,7 +241,7 @@ void CvCaptureCAM_XIMEA::resetCvImage()
         default :
             return;
         }
-    }	
+    }
     cvZero(frame);
 }
 /**********************************************************************************/
