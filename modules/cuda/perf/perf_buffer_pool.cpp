@@ -40,72 +40,75 @@
 //
 //M*/
 
-#include "opencv2/opencv_modules.hpp"
+#include "perf_precomp.hpp"
 
-#ifndef HAVE_OPENCV_CUDEV
-
-#error "opencv_cudev is required"
-
-#else
+#ifdef HAVE_CUDA
 
 #include "opencv2/cudaarithm.hpp"
-#include "opencv2/cudev.hpp"
+#include "opencv2/core/private.cuda.hpp"
 
-using namespace cv::cudev;
+using namespace testing;
+using namespace perf;
+using namespace cv;
+using namespace cv::cuda;
 
 namespace
 {
-    template <typename T>
-    void minMaxImpl(const GpuMat& _src, const GpuMat& mask, GpuMat& _buf, double* minVal, double* maxVal)
+    void func1(const GpuMat& src, GpuMat& dst, Stream& stream)
     {
-        typedef typename SelectIf<
-                TypesEquals<T, double>::value,
-                double,
-                typename SelectIf<TypesEquals<T, float>::value, float, int>::type
-                >::type work_type;
+        BufferPool pool(stream);
 
-        const GpuMat_<T>& src = (const GpuMat_<T>&) _src;
-        GpuMat_<work_type>& buf = (GpuMat_<work_type>&) _buf;
+        GpuMat buf = pool.getBuffer(src.size(), CV_32FC(src.channels()));
 
-        if (mask.empty())
-            gridFindMinMaxVal(src, buf);
-        else
-            gridFindMinMaxVal(src, buf, globPtr<uchar>(mask));
+        src.convertTo(buf, CV_32F, 1.0 / 255.0, stream);
 
-        work_type data[2];
-        buf.download(cv::Mat(1, 2, buf.type(), data));
+        cuda::exp(buf, dst, stream);
+    }
 
-        if (minVal)
-            *minVal = data[0];
+    void func2(const GpuMat& src1, const GpuMat& src2, GpuMat& dst, Stream& stream)
+    {
+        BufferPool pool(stream);
 
-        if (maxVal)
-            *maxVal = data[1];
+        GpuMat buf1 = pool.getBuffer(src1.size(), CV_32FC(src1.channels()));
+
+        func1(src1, buf1, stream);
+
+        GpuMat buf2 = pool.getBuffer(src2.size(), CV_32FC(src2.channels()));
+
+        func1(src2, buf2, stream);
+
+        cuda::add(buf1, buf2, dst, noArray(), -1, stream);
     }
 }
 
-void cv::cuda::minMax(InputArray _src, double* minVal, double* maxVal, InputArray _mask, GpuMat& buf)
+PERF_TEST_P(Sz, BufferPool, CUDA_TYPICAL_MAT_SIZES)
 {
-    typedef void (*func_t)(const GpuMat& _src, const GpuMat& mask, GpuMat& _buf, double* minVal, double* maxVal);
-    static const func_t funcs[] =
+    static bool first = true;
+
+    const Size size = GetParam();
+
+    const bool useBufferPool = PERF_RUN_CUDA();
+
+    Mat host_src(size, CV_8UC1);
+    declare.in(host_src, WARMUP_RNG);
+
+    GpuMat src1(host_src), src2(host_src);
+    GpuMat dst;
+
+    setBufferPoolUsage(useBufferPool);
+    if (useBufferPool && first)
     {
-        minMaxImpl<uchar>,
-        minMaxImpl<schar>,
-        minMaxImpl<ushort>,
-        minMaxImpl<short>,
-        minMaxImpl<int>,
-        minMaxImpl<float>,
-        minMaxImpl<double>
-    };
+        setBufferPoolConfig(-1, 25 * 1024 * 1024, 2);
+        first = false;
+    }
 
-    GpuMat src = _src.getGpuMat();
-    GpuMat mask = _mask.getGpuMat();
+    TEST_CYCLE()
+    {
+        func2(src1, src2, dst, Stream::Null());
+    }
 
-    CV_Assert( src.channels() == 1 );
-    CV_DbgAssert( mask.empty() || (mask.size() == src.size() && mask.type() == CV_8U) );
-
-    const func_t func = funcs[src.depth()];
-
-    func(src, mask, buf, minVal, maxVal);
+    Mat h_dst(dst);
+    SANITY_CHECK(h_dst);
 }
 
 #endif
