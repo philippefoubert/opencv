@@ -1347,7 +1347,7 @@ public:
             }
         }
         else if (cn == 3)
-            for ( ; dx <= w - 6; dx += 6, S0 += 12, S1 += 12, D += 6)
+            for ( ; dx <= w - 11; dx += 6, S0 += 12, S1 += 12, D += 6)
             {
                 __m128i r0 = _mm_loadu_si128((const __m128i*)S0);
                 __m128i r1 = _mm_loadu_si128((const __m128i*)S1);
@@ -1372,6 +1372,9 @@ public:
         else
         {
             CV_Assert(cn == 4);
+            int v[] = { 0, 0, -1, -1 };
+            __m128i mask = _mm_loadu_si128((const __m128i*)v);
+
             for ( ; dx <= w - 8; dx += 8, S0 += 16, S1 += 16, D += 8)
             {
                 __m128i r0 = _mm_loadu_si128((const __m128i*)S0);
@@ -1385,14 +1388,15 @@ public:
                 __m128i s0 = _mm_add_epi16(r0_16l, _mm_srli_si128(r0_16l, 8));
                 __m128i s1 = _mm_add_epi16(r1_16l, _mm_srli_si128(r1_16l, 8));
                 s0 = _mm_add_epi16(s1, _mm_add_epi16(s0, delta2));
-                s0 = _mm_packus_epi16(_mm_srli_epi16(s0, 2), zero);
-                _mm_storel_epi64((__m128i*)D, s0);
+                __m128i res0 = _mm_srli_epi16(s0, 2);
 
                 s0 = _mm_add_epi16(r0_16h, _mm_srli_si128(r0_16h, 8));
                 s1 = _mm_add_epi16(r1_16h, _mm_srli_si128(r1_16h, 8));
                 s0 = _mm_add_epi16(s1, _mm_add_epi16(s0, delta2));
-                s0 = _mm_packus_epi16(_mm_srli_epi16(s0, 2), zero);
-                _mm_storel_epi64((__m128i*)(D+4), s0);
+                __m128i res1 = _mm_srli_epi16(s0, 2);
+                s0 = _mm_packus_epi16(_mm_or_si128(_mm_andnot_si128(mask, res0),
+                                                   _mm_and_si128(mask, _mm_slli_si128(res1, 8))), zero);
+                _mm_storel_epi64((__m128i*)(D), s0);
             }
         }
 
@@ -1445,7 +1449,7 @@ public:
             }
         }
         else if (cn == 3)
-            for ( ; dx <= w - 3; dx += 3, S0 += 6, S1 += 6, D += 3)
+            for ( ; dx <= w - 4; dx += 3, S0 += 6, S1 += 6, D += 3)
             {
                 __m128i r0 = _mm_loadu_si128((const __m128i*)S0);
                 __m128i r1 = _mm_loadu_si128((const __m128i*)S1);
@@ -3175,8 +3179,8 @@ public:
                             int sx = cvRound(sX[x1]*INTER_TAB_SIZE);
                             int sy = cvRound(sY[x1]*INTER_TAB_SIZE);
                             int v = (sy & (INTER_TAB_SIZE-1))*INTER_TAB_SIZE + (sx & (INTER_TAB_SIZE-1));
-                            XY[x1*2] = (short)(sx >> INTER_BITS);
-                            XY[x1*2+1] = (short)(sy >> INTER_BITS);
+                            XY[x1*2] = saturate_cast<short>(sx >> INTER_BITS);
+                            XY[x1*2+1] = saturate_cast<short>(sy >> INTER_BITS);
                             A[x1] = (ushort)v;
                         }
                     }
@@ -3189,8 +3193,8 @@ public:
                             int sx = cvRound(sXY[x1*2]*INTER_TAB_SIZE);
                             int sy = cvRound(sXY[x1*2+1]*INTER_TAB_SIZE);
                             int v = (sy & (INTER_TAB_SIZE-1))*INTER_TAB_SIZE + (sx & (INTER_TAB_SIZE-1));
-                            XY[x1*2] = (short)(sx >> INTER_BITS);
-                            XY[x1*2+1] = (short)(sy >> INTER_BITS);
+                            XY[x1*2] = saturate_cast<short>(sx >> INTER_BITS);
+                            XY[x1*2+1] = saturate_cast<short>(sy >> INTER_BITS);
                             A[x1] = (ushort)v;
                         }
                     }
@@ -3404,8 +3408,8 @@ void cv::convertMaps( InputArray _map1, InputArray _map2,
                 {
                     int ix = saturate_cast<int>(src1f[x]*INTER_TAB_SIZE);
                     int iy = saturate_cast<int>(src2f[x]*INTER_TAB_SIZE);
-                    dst1[x*2] = (short)(ix >> INTER_BITS);
-                    dst1[x*2+1] = (short)(iy >> INTER_BITS);
+                    dst1[x*2] = saturate_cast<short>(ix >> INTER_BITS);
+                    dst1[x*2+1] = saturate_cast<short>(iy >> INTER_BITS);
                     dst2[x] = (ushort)((iy & (INTER_TAB_SIZE-1))*INTER_TAB_SIZE + (ix & (INTER_TAB_SIZE-1)));
                 }
         }
@@ -3422,8 +3426,8 @@ void cv::convertMaps( InputArray _map1, InputArray _map2,
                 {
                     int ix = saturate_cast<int>(src1f[x*2]*INTER_TAB_SIZE);
                     int iy = saturate_cast<int>(src1f[x*2+1]*INTER_TAB_SIZE);
-                    dst1[x*2] = (short)(ix >> INTER_BITS);
-                    dst1[x*2+1] = (short)(iy >> INTER_BITS);
+                    dst1[x*2] = saturate_cast<short>(ix >> INTER_BITS);
+                    dst1[x*2+1] = saturate_cast<short>(iy >> INTER_BITS);
                     dst2[x] = (ushort)((iy & (INTER_TAB_SIZE-1))*INTER_TAB_SIZE + (ix & (INTER_TAB_SIZE-1)));
                 }
         }
