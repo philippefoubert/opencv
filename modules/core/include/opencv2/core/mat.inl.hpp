@@ -610,7 +610,14 @@ void Mat::addref()
 inline void Mat::release()
 {
     if( u && CV_XADD(&u->refcount, -1) == 1 )
+#ifdef CV_PERFORMANCE_ANALYSIS
+    {
+        printf("%s, line %d - Mat::release(%dx%d)\n", __FILE__, __LINE__, cols, rows); fflush(stdout);
+#endif /*CV_PERFORMANCE_ANALYSIS*/
         deallocate();
+#ifdef CV_PERFORMANCE_ANALYSIS
+    }
+#endif /*CV_PERFORMANCE_ANALYSIS*/
     data = datastart = dataend = datalimit = 0;
     size.p[0] = 0;
     u = 0;
