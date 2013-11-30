@@ -245,11 +245,17 @@ protected:
 class CV_EXPORTS KernelArg
 {
 public:
-    enum { LOCAL=1, READ_ONLY=2, WRITE_ONLY=4, READ_WRITE=6, CONSTANT=8, NO_SIZE=256 };
+    enum { LOCAL=1, READ_ONLY=2, WRITE_ONLY=4, READ_WRITE=6, CONSTANT=8, PTR_ONLY = 16, NO_SIZE=256 };
     KernelArg(int _flags, UMat* _m, int wscale=1, const void* _obj=0, size_t _sz=0);
     KernelArg();
 
     static KernelArg Local() { return KernelArg(LOCAL, 0); }
+    static KernelArg PtrWriteOnly(const UMat& m)
+    { return KernelArg(PTR_ONLY+WRITE_ONLY, (UMat*)&m); }
+    static KernelArg PtrReadOnly(const UMat& m)
+    { return KernelArg(PTR_ONLY+READ_ONLY, (UMat*)&m); }
+    static KernelArg PtrReadWrite(const UMat& m)
+    { return KernelArg(PTR_ONLY+READ_WRITE, (UMat*)&m); }
     static KernelArg ReadWrite(const UMat& m, int wscale=1)
     { return KernelArg(READ_WRITE, (UMat*)&m, wscale); }
     static KernelArg ReadWriteNoSize(const UMat& m, int wscale=1)
