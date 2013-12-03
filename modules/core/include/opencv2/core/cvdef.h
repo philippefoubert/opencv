@@ -444,7 +444,7 @@ CV_INLINE int cvIsInf( double value )
    // atomic increment on the linux version of the Intel(tm) compiler
 #  define CV_XADD(addr, delta) (int)_InterlockedExchangeAdd(const_cast<void*>(reinterpret_cast<volatile void*>(addr)), delta)
 #elif defined __GNUC__
-#  if defined __clang__ && __clang_major__ >= 3 && !defined __ANDROID__
+#  if defined __clang__ && __clang_major__ >= 3 && !defined __ANDROID__ && !defined __EMSCRIPTEN__
 #    ifdef __ATOMIC_ACQ_REL
 #      define CV_XADD(addr, delta) __c11_atomic_fetch_add((_Atomic(int)*)(addr), delta, __ATOMIC_ACQ_REL)
 #    else
@@ -462,6 +462,21 @@ CV_INLINE int cvIsInf( double value )
 #  define CV_XADD(addr, delta) (int)_InterlockedExchangeAdd((long volatile*)addr, delta)
 #else
    CV_INLINE CV_XADD(int* addr, int delta) { int tmp = *addr; *addr += delta; return tmp; }
+#endif
+
+
+/****************************************************************************************\
+*                                  CV_NORETURN attribute                                 *
+\****************************************************************************************/
+
+#ifndef CV_NORETURN
+#  if defined(__GNUC__)
+#    define CV_NORETURN __attribute__((__noreturn__))
+#  elif defined(_MSC_VER) && (_MSC_VER >= 1300)
+#    define CV_NORETURN __declspec(noreturn)
+#  else
+#    define CV_NORETURN /* nothing by default */
+#  endif
 #endif
 
 #endif // __OPENCV_CORE_CVDEF_H__
