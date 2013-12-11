@@ -10,13 +10,12 @@
 //                           License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2010-2012, Multicoreware, Inc., all rights reserved.
+// Copyright (C) 2010-2012, MulticoreWare Inc., all rights reserved.
 // Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // @Authors
-//    Fangfang Bai, fangfang@multicorewareinc.com
-//    Jin Ma,       jin@multicorewareinc.com
+//    Liu Liujun, liujun@multicorewareinc.com
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -26,7 +25,7 @@
 //
 //   * Redistribution's in binary form must reproduce the above copyright notice,
 //     this list of conditions and the following disclaimer in the documentation
-//     and/or other Materials provided with the distribution.
+//     and/or other materials provided with the distribution.
 //
 //   * The name of the copyright holders may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
@@ -44,47 +43,46 @@
 //
 //M*/
 
-#include "perf_precomp.hpp"
+#ifdef DOUBLE_SUPPORT
+#ifdef cl_amd_fp64
+#pragma OPENCL EXTENSION cl_amd_fp64:enable
+#elif defined (cl_khr_fp64)
+#pragma OPENCL EXTENSION cl_khr_fp64:enable
+#endif
+#endif
 
-using namespace perf;
-using std::tr1::tuple;
-using std::tr1::get;
-using namespace cv;
-using namespace cv::ocl;
-using namespace cvtest;
-using namespace testing;
-using namespace std;
+#define noconvert
 
-
-///////////// Moments ////////////////////////
-//*! performance of image
-typedef tuple<Size, MatType, bool> MomentsParamType;
-typedef TestBaseWithParam<MomentsParamType> MomentsFixture;
-
-PERF_TEST_P(MomentsFixture, Moments,
-    ::testing::Combine(OCL_TYPICAL_MAT_SIZES,
-                       OCL_PERF_ENUM(CV_8UC1, CV_16SC1, CV_16UC1, CV_32FC1), ::testing::Bool()))
+__kernel void blendLinear(__global const uchar * src1ptr, int src1_step, int src1_offset,
+                          __global const uchar * src2ptr, int src2_step, int src2_offset,
+                          __global const uchar * weight1, int weight1_step, int weight1_offset,
+                          __global const uchar * weight2, int weight2_step, int weight2_offset,
+                          __global uchar * dstptr, int dst_step, int dst_offset, int dst_rows, int dst_cols)
 {
-    const MomentsParamType params = GetParam();
-    const Size srcSize = get<0>(params);
-    const int type = get<1>(params);
-    const bool binaryImage = get<2>(params);
+    int x = get_global_id(0);
+    int y = get_global_id(1);
 
-    Mat  src(srcSize, type), dst(7, 1, CV_64F);
-    randu(src, 0, 255);
+    if (x < dst_cols && y < dst_rows)
+    {
+        int src1_index = mad24(y, src1_step, src1_offset + x * cn * (int)sizeof(T));
+        int src2_index = mad24(y, src2_step, src2_offset + x * cn * (int)sizeof(T));
+        int weight1_index = mad24(y, weight1_step, weight1_offset + x * (int)sizeof(float));
+        int weight2_index = mad24(y, weight2_step, weight2_offset + x * (int)sizeof(float));
+        int dst_index = mad24(y, dst_step, dst_offset + x * cn * (int)sizeof(T));
 
-    cv::Moments mom;
-    if (RUN_OCL_IMPL)
-    {
-        oclMat src_d(src);
-        OCL_TEST_CYCLE() mom = cv::ocl::ocl_moments(src_d, binaryImage);
+        float w1 = *(__global const float *)(weight1 + weight1_index),
+              w2 = *(__global const float *)(weight2 + weight2_index);
+        float den = w1 + w2 + 1e-5f;
+
+        __global const T * src1 = (__global const T *)(src1ptr + src1_index);
+        __global const T * src2 = (__global const T *)(src2ptr + src2_index);
+        __global T * dst = (__global T *)(dstptr + dst_index);
+
+        #pragma unroll
+        for (int i = 0; i < cn; ++i)
+        {
+            float num = w1 * convert_float(src1[i]) + w2 * convert_float(src2[i]);
+            dst[i] = convertToT(num / den);
+        }
     }
-    else if (RUN_PLAIN_IMPL)
-    {
-        TEST_CYCLE() mom = cv::moments(src, binaryImage);
-    }
-    else
-        OCL_PERF_ELSE
-    cv::HuMoments(mom, dst);
-    SANITY_CHECK(dst, 2e-1);
 }
