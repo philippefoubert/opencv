@@ -10,12 +10,8 @@
 //                           License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2010-2012, Institute Of Software Chinese Academy Of Science, all rights reserved.
-// Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
+// Copyright (C) 2013, OpenCV Foundation, all rights reserved.
 // Third party copyrights are property of their respective owners.
-//
-// @Authors
-//   Long Guoping , longguoping@gmail.com
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -41,29 +37,57 @@
 // or tort (including negligence or otherwise) arising in any way out of
 // the use of this software, even if advised of the possibility of such damage.
 //
+// Authors:
+//  * Peter Andreas Entschev, peter@entschev.com
+//
 //M*/
 
-#ifndef __OPENCV_OPENCL_SAFE_CALL_HPP__
-#define __OPENCV_OPENCL_SAFE_CALL_HPP__
+#include "perf_precomp.hpp"
 
-#include "opencv2/core/opencl/runtime/opencl_core.hpp"
+using namespace perf;
 
-#define openCLSafeCall(expr)  ___openCLSafeCall(expr, __FILE__, __LINE__, CV_Func)
-#define openCLVerifyCall(res) ___openCLSafeCall(res, __FILE__, __LINE__, CV_Func)
+///////////// FAST ////////////////////////
 
+typedef std::tr1::tuple<std::string, int, bool> Image_Threshold_NonmaxSupression_t;
+typedef perf::TestBaseWithParam<Image_Threshold_NonmaxSupression_t> Image_Threshold_NonmaxSupression;
 
-namespace cv
+PERF_TEST_P(Image_Threshold_NonmaxSupression, FAST,
+            testing::Combine(testing::Values<string>("gpu/perf/aloe.png"),
+                    testing::Values(20),
+                    testing::Bool()))
 {
-    namespace ocl
+    const Image_Threshold_NonmaxSupression_t params = GetParam();
+    const std::string imgFile = std::tr1::get<0>(params);
+    const int threshold = std::tr1::get<1>(params);
+    const bool nonmaxSupression = std::tr1::get<2>(params);
+
+    const cv::Mat img = imread(getDataPath(imgFile), cv::IMREAD_GRAYSCALE);
+    ASSERT_FALSE(img.empty());
+
+    if (RUN_OCL_IMPL)
     {
-        const char *getOpenCLErrorString( int err );
+        cv::ocl::FAST_OCL fast(threshold, nonmaxSupression, 0.5);
 
-        static inline void ___openCLSafeCall(int err, const char *file, const int line, const char *func = "")
-        {
-            if (CL_SUCCESS != err)
-                cv::error(Error::OpenCLApiCallError, getOpenCLErrorString(err), func, file, line);
-        }
+        cv::ocl::oclMat d_img(img);
+        cv::ocl::oclMat d_keypoints;
+
+        OCL_TEST_CYCLE() fast(d_img, cv::ocl::oclMat(), d_keypoints);
+
+        std::vector<cv::KeyPoint> ocl_keypoints;
+        fast.downloadKeypoints(d_keypoints, ocl_keypoints);
+
+        sortKeyPoints(ocl_keypoints);
+
+        SANITY_CHECK_KEYPOINTS(ocl_keypoints);
     }
-}
+    else if (RUN_PLAIN_IMPL)
+    {
+        std::vector<cv::KeyPoint> cpu_keypoints;
 
-#endif /* __OPENCV_OPENCL_SAFE_CALL_HPP__ */
+        TEST_CYCLE() cv::FAST(img, cpu_keypoints, threshold, nonmaxSupression);
+
+        SANITY_CHECK_KEYPOINTS(cpu_keypoints);
+    }
+    else
+        OCL_PERF_ELSE;
+}

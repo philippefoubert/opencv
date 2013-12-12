@@ -10,12 +10,8 @@
 //                           License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2010-2012, Institute Of Software Chinese Academy Of Science, all rights reserved.
-// Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
+// Copyright (C) 2013, OpenCV Foundation, all rights reserved.
 // Third party copyrights are property of their respective owners.
-//
-// @Authors
-//   Long Guoping , longguoping@gmail.com
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -41,29 +37,57 @@
 // or tort (including negligence or otherwise) arising in any way out of
 // the use of this software, even if advised of the possibility of such damage.
 //
+// Authors:
+//  * Peter Andreas Entschev, peter@entschev.com
+//
 //M*/
 
-#ifndef __OPENCV_OPENCL_SAFE_CALL_HPP__
-#define __OPENCV_OPENCL_SAFE_CALL_HPP__
+#include "test_precomp.hpp"
 
-#include "opencv2/core/opencl/runtime/opencl_core.hpp"
+#ifdef HAVE_OPENCL
 
-#define openCLSafeCall(expr)  ___openCLSafeCall(expr, __FILE__, __LINE__, CV_Func)
-#define openCLVerifyCall(res) ___openCLSafeCall(res, __FILE__, __LINE__, CV_Func)
+////////////////////////////////////////////////////////
+// FAST
 
-
-namespace cv
+namespace
 {
-    namespace ocl
-    {
-        const char *getOpenCLErrorString( int err );
-
-        static inline void ___openCLSafeCall(int err, const char *file, const int line, const char *func = "")
-        {
-            if (CL_SUCCESS != err)
-                cv::error(Error::OpenCLApiCallError, getOpenCLErrorString(err), func, file, line);
-        }
-    }
+    IMPLEMENT_PARAM_CLASS(FAST_Threshold, int)
+    IMPLEMENT_PARAM_CLASS(FAST_NonmaxSupression, bool)
 }
 
-#endif /* __OPENCV_OPENCL_SAFE_CALL_HPP__ */
+PARAM_TEST_CASE(FAST, FAST_Threshold, FAST_NonmaxSupression)
+{
+    int threshold;
+    bool nonmaxSupression;
+
+    virtual void SetUp()
+    {
+        threshold = GET_PARAM(0);
+        nonmaxSupression = GET_PARAM(1);
+    }
+};
+
+OCL_TEST_P(FAST, Accuracy)
+{
+    cv::Mat image = readImage("gpu/perf/aloe.png", cv::IMREAD_GRAYSCALE);
+    ASSERT_FALSE(image.empty());
+
+    cv::ocl::FAST_OCL fast(threshold);
+    fast.nonmaxSupression = nonmaxSupression;
+
+    cv::ocl::oclMat ocl_image = cv::ocl::oclMat(image);
+
+    std::vector<cv::KeyPoint> keypoints;
+    fast(ocl_image, cv::ocl::oclMat(), keypoints);
+
+    std::vector<cv::KeyPoint> keypoints_gold;
+    cv::FAST(image, keypoints_gold, threshold, nonmaxSupression);
+
+    ASSERT_KEYPOINTS_EQ(keypoints_gold, keypoints);
+}
+
+INSTANTIATE_TEST_CASE_P(OCL_Features2D, FAST, testing::Combine(
+                        testing::Values(FAST_Threshold(25), FAST_Threshold(50)),
+                        testing::Values(FAST_NonmaxSupression(false), FAST_NonmaxSupression(true))));
+
+#endif
