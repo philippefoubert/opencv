@@ -624,9 +624,9 @@ inline void Mat::release()
 #ifdef CV_PERFORMANCE_ANALYSIS
     }
 #endif /*CV_PERFORMANCE_ANALYSIS*/
+    u = NULL;
     data = datastart = dataend = datalimit = 0;
     size.p[0] = 0;
-    u = 0;
 }
 
 inline
