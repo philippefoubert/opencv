@@ -2057,10 +2057,15 @@ static bool ocl_pow(InputArray _src, double power, OutputArray _dst)
     ocl::KernelArg srcarg = ocl::KernelArg::ReadOnlyNoSize(src),
             dstarg = ocl::KernelArg::WriteOnly(dst, cn);
 
-    if (depth == CV_32F)
-        k.args(srcarg, dstarg, (float)power);
+    if (issqrt)
+        k.args(srcarg, dstarg);
     else
-        k.args(srcarg, dstarg, power);
+    {
+        if (depth == CV_32F)
+            k.args(srcarg, dstarg, (float)power);
+        else
+            k.args(srcarg, dstarg, power);
+    }
 
     size_t globalsize[2] = { dst.cols *  cn, dst.rows };
     return k.run(2, globalsize, NULL, false);
@@ -2375,7 +2380,7 @@ static bool ocl_patchNaNs( InputOutputArray _a, float value )
     int cn = a.channels();
 
     k.args(ocl::KernelArg::ReadOnlyNoSize(a),
-           ocl::KernelArg::WriteOnly(a), (float)value);
+           ocl::KernelArg::WriteOnly(a, cn), (float)value);
 
     size_t globalsize[2] = { a.cols * cn, a.rows };
     return k.run(2, globalsize, NULL, false);
