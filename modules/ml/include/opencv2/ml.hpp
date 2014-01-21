@@ -515,8 +515,10 @@ public:
 
     CV_WRAP virtual int get_support_vector_count() const;
     virtual const float* get_support_vector(int i) const;
-    virtual CvSVMParams get_params() const { return params; };
+    virtual CvSVMParams get_params() const { return params; }
     CV_WRAP virtual void clear();
+
+    virtual const CvSVMDecisionFunc* get_decision_function() const { return decision_func; }
 
     static CvParamGrid get_default_grid( int param_id );
 
@@ -1523,7 +1525,7 @@ public:
     // API
     // virtual bool train( CvMLData* data,
              CvGBTreesParams params=CvGBTreesParams(),
-             bool update=false ) {return false;};
+             bool update=false ) {return false;}
 
     // INPUT
     // data          - training set.
