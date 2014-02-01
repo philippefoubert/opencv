@@ -1626,6 +1626,16 @@ struct Device::Impl
     {
         handle = (cl_device_id)d;
         refcount = 1;
+
+        name_ = getStrProp(CL_DEVICE_NAME);
+        version_ = getStrProp(CL_DEVICE_VERSION);
+        doubleFPConfig_ = getProp<cl_device_fp_config, int>(CL_DEVICE_DOUBLE_FP_CONFIG);
+        hostUnifiedMemory_ = getBoolProp(CL_DEVICE_HOST_UNIFIED_MEMORY);
+        maxComputeUnits_ = getProp<cl_uint, int>(CL_DEVICE_MAX_COMPUTE_UNITS);
+        maxWorkGroupSize_ = getProp<size_t, size_t>(CL_DEVICE_MAX_WORK_GROUP_SIZE);
+        type_ = getProp<cl_device_type, int>(CL_DEVICE_TYPE);
+        deviceVersion_ = getStrProp(CL_DEVICE_VERSION);
+        driverVersion_ = getStrProp(CL_DRIVER_VERSION);
     }
 
     template<typename _TpCL, typename _TpOut>
@@ -1657,6 +1667,16 @@ struct Device::Impl
 
     IMPLEMENT_REFCOUNTABLE();
     cl_device_id handle;
+
+    String name_;
+    String version_;
+    int doubleFPConfig_;
+    bool hostUnifiedMemory_;
+    int maxComputeUnits_;
+    size_t maxWorkGroupSize_;
+    int type_;
+    String deviceVersion_;
+    String driverVersion_;
 };
 
 
@@ -1708,13 +1728,13 @@ void* Device::ptr() const
 }
 
 String Device::name() const
-{ return p ? p->getStrProp(CL_DEVICE_NAME) : String(); }
+{ return p ? p->name_ : String(); }
 
 String Device::extensions() const
 { return p ? p->getStrProp(CL_DEVICE_EXTENSIONS) : String(); }
 
 String Device::version() const
-{ return p ? p->getStrProp(CL_DEVICE_VERSION) : String(); }
+{ return p ? p->version_ : String(); }
 
 String Device::vendor() const
 { return p ? p->getStrProp(CL_DEVICE_VENDOR) : String(); }
@@ -1726,13 +1746,13 @@ String Device::OpenCLVersion() const
 { return p ? p->getStrProp(CL_DEVICE_EXTENSIONS) : String(); }
 
 String Device::deviceVersion() const
-{ return p ? p->getStrProp(CL_DEVICE_VERSION) : String(); }
+{ return p ? p->deviceVersion_ : String(); }
 
 String Device::driverVersion() const
-{ return p ? p->getStrProp(CL_DRIVER_VERSION) : String(); }
+{ return p ? p->driverVersion_ : String(); }
 
 int Device::type() const
-{ return p ? p->getProp<cl_device_type, int>(CL_DEVICE_TYPE) : 0; }
+{ return p ? p->type_ : 0; }
 
 int Device::addressBits() const
 { return p ? p->getProp<cl_uint, int>(CL_DEVICE_ADDRESS_BITS) : 0; }
@@ -1751,7 +1771,7 @@ bool Device::linkerAvailable() const
 #endif
 
 int Device::doubleFPConfig() const
-{ return p ? p->getProp<cl_device_fp_config, int>(CL_DEVICE_DOUBLE_FP_CONFIG) : 0; }
+{ return p ? p->doubleFPConfig_ : 0; }
 
 int Device::singleFPConfig() const
 { return p ? p->getProp<cl_device_fp_config, int>(CL_DEVICE_SINGLE_FP_CONFIG) : 0; }
@@ -1791,7 +1811,7 @@ int Device::localMemType() const
 { return p ? p->getProp<cl_device_local_mem_type, int>(CL_DEVICE_LOCAL_MEM_TYPE) : 0; }
 
 bool Device::hostUnifiedMemory() const
-{ return p ? p->getBoolProp(CL_DEVICE_HOST_UNIFIED_MEMORY) : false; }
+{ return p ? p->hostUnifiedMemory_ : false; }
 
 bool Device::imageSupport() const
 { return p ? p->getBoolProp(CL_DEVICE_IMAGE_SUPPORT) : false; }
@@ -1829,7 +1849,7 @@ int Device::maxClockFrequency() const
 { return p ? p->getProp<cl_uint, int>(CL_DEVICE_MAX_CLOCK_FREQUENCY) : 0; }
 
 int Device::maxComputeUnits() const
-{ return p ? p->getProp<cl_uint, int>(CL_DEVICE_MAX_COMPUTE_UNITS) : 0; }
+{ return p ? p->maxComputeUnits_ : 0; }
 
 int Device::maxConstantArgs() const
 { return p ? p->getProp<cl_uint, int>(CL_DEVICE_MAX_CONSTANT_ARGS) : 0; }
@@ -1853,7 +1873,7 @@ int Device::maxSamplers() const
 { return p ? p->getProp<cl_uint, int>(CL_DEVICE_MAX_SAMPLERS) : 0; }
 
 size_t Device::maxWorkGroupSize() const
-{ return p ? p->getProp<size_t, size_t>(CL_DEVICE_MAX_WORK_GROUP_SIZE) : 0; }
+{ return p ? p->maxWorkGroupSize_ : 0; }
 
 int Device::maxWorkItemDims() const
 { return p ? p->getProp<cl_uint, int>(CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS) : 0; }
@@ -3299,7 +3319,7 @@ public:
         CV_Assert(u->handle != 0 && u->urefcount == 0);
         if(u->tempUMat())
         {
-            UMatDataAutoLock lock(u);
+//            UMatDataAutoLock lock(u);
             if( u->hostCopyObsolete() && u->refcount > 0 )
             {
                 cl_command_queue q = (cl_command_queue)Queue::getDefault().ptr();
@@ -3582,8 +3602,6 @@ public:
 
         u->markHostCopyObsolete(true);
         u->markDeviceCopyObsolete(false);
-
-        clFinish(q);
     }
 
     void copy(UMatData* src, UMatData* dst, int dims, const size_t sz[],
@@ -3673,6 +3691,7 @@ struct PlatformInfo2::Impl
 {
     Impl(void* id)
     {
+        refcount = 1;
         handle = *(cl_platform_id*)id;
         getDevices(devices, handle);
     }
@@ -3706,6 +3725,26 @@ PlatformInfo2::~PlatformInfo2()
         p->release();
 }
 
+PlatformInfo2::PlatformInfo2(const PlatformInfo2& i)
+{
+    if (i.p)
+        i.p->addref();
+    this->p = i.p;
+}
+
+PlatformInfo2& PlatformInfo2::operator =(const PlatformInfo2& i)
+{
+    if (i.p != this->p)
+    {
+        if (i.p)
+            i.p->addref();
+        if (this->p)
+            this->p->release();
+        this->p = i.p;
+    }
+    return *this;
+}
+
 int PlatformInfo2::deviceNumber() const
 {
     return p ? (int)p->devices.size() : 0;
@@ -3713,7 +3752,7 @@ int PlatformInfo2::deviceNumber() const
 
 void PlatformInfo2::getDevice(Device& device, int d) const
 {
-    CV_Assert(d < (int)p->devices.size() );
+    CV_Assert(p && d < (int)p->devices.size() );
     if(p)
         device.set(p->devices[d]);
 }
@@ -3812,6 +3851,58 @@ const char* convertTypeStr(int sdepth, int ddepth, int cn, char* buf)
         sprintf(buf, "convert_%s_sat", typestr);
     }
     return buf;
+}
+
+template <typename T>
+static std::string kerToStr(const Mat & k)
+{
+    int width = k.cols - 1, depth = k.depth();
+    const T * const data = reinterpret_cast<const T *>(k.data);
+
+    std::ostringstream stream;
+    stream.precision(10);
+
+    if (depth <= CV_8S)
+    {
+        for (int i = 0; i < width; ++i)
+            stream << "DIG(" << (int)data[i] << ")";
+        stream << "DIG(" << (int)data[width] << ")";
+    }
+    else if (depth == CV_32F)
+    {
+        stream.setf(std::ios_base::showpoint);
+        for (int i = 0; i < width; ++i)
+            stream << "DIG(" << data[i] << "f)";
+        stream << "DIG(" << data[width] << "f)";
+    }
+    else
+    {
+        for (int i = 0; i < width; ++i)
+            stream << "DIG(" << data[i] << ")";
+        stream << "DIG(" << data[width] << ")";
+    }
+
+    return stream.str();
+}
+
+String kernelToStr(InputArray _kernel, int ddepth)
+{
+    Mat kernel = _kernel.getMat().reshape(1, 1);
+
+    int depth = kernel.depth();
+    if (ddepth < 0)
+        ddepth = depth;
+
+    if (ddepth != depth)
+        kernel.convertTo(kernel, ddepth);
+
+    typedef std::string (*func_t)(const Mat &);
+    static const func_t funcs[] = { kerToStr<uchar>, kerToStr<char>, kerToStr<ushort>,kerToStr<short>,
+                                    kerToStr<int>, kerToStr<float>, kerToStr<double>, 0 };
+    const func_t func = funcs[depth];
+    CV_Assert(func != 0);
+
+    return cv::format(" -D COEFF=%s", func(kernel).c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
