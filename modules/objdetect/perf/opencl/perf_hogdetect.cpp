@@ -7,12 +7,16 @@
 //  copy or use the software.
 //
 //
-//                          License Agreement
+//                           License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2000-2008, Intel Corporation, all rights reserved.
-// Copyright (C) 2009, Willow Garage Inc., all rights reserved.
+// Copyright (C) 2010-2012, Multicoreware, Inc., all rights reserved.
+// Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
+//
+// @Authors
+//    Fangfang Bai, fangfang@multicorewareinc.com
+//    Jin Ma,       jin@multicorewareinc.com
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -27,7 +31,7 @@
 //   * The name of the copyright holders may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
 //
-// This software is provided by the copyright holders and contributors "as is" and
+// This software is provided by the copyright holders and contributors as is and
 // any express or implied warranties, including, but not limited to, the implied
 // warranties of merchantability and fitness for a particular purpose are disclaimed.
 // In no event shall the Intel Corporation or contributors be liable for any direct,
@@ -40,26 +44,51 @@
 //
 //M*/
 
-#ifndef __OPENCV_PRECOMP_H__
-#define __OPENCV_PRECOMP_H__
+#include "perf_precomp.hpp"
+#include "opencv2/ts/ocl_perf.hpp"
 
-#include "opencv2/nonfree.hpp"
-#include "opencv2/imgproc.hpp"
+#ifdef HAVE_OPENCL
 
-#include "opencv2/core/utility.hpp"
-#include "opencv2/core/private.hpp"
+namespace cvtest {
+namespace ocl {
+///////////// HOG////////////////////////
 
-#include "opencv2/nonfree/cuda.hpp"
-#include "opencv2/core/private.cuda.hpp"
+struct RectLess :
+        public std::binary_function<cv::Rect, cv::Rect, bool>
+{
+    bool operator()(const cv::Rect& a,
+        const cv::Rect& b) const
+    {
+        if (a.x != b.x)
+            return a.x < b.x;
+        else if (a.y != b.y)
+            return a.y < b.y;
+        else if (a.width != b.width)
+            return a.width < b.width;
+        else
+            return a.height < b.height;
+    }
+};
 
-#include "opencv2/core/ocl.hpp"
+OCL_PERF_TEST(HOGFixture, HOG)
+{
+    UMat src;
+    imread(getDataPath("gpu/hog/road.png"), cv::IMREAD_GRAYSCALE).copyTo(src);
+    ASSERT_FALSE(src.empty());
 
-#include "opencv2/opencv_modules.hpp"
+    vector<cv::Rect> found_locations;
+    declare.in(src);
 
-#ifdef HAVE_OPENCV_CUDAARITHM
-#  include "opencv2/cudaarithm.hpp"
-#endif
+    HOGDescriptor hog;
+    hog.setSVMDetector(hog.getDefaultPeopleDetector());
 
-#include "opencv2/core/private.hpp"
+    OCL_TEST_CYCLE() hog.detectMultiScale(src, found_locations);
+
+    std::sort(found_locations.begin(), found_locations.end(), RectLess());
+    SANITY_CHECK(found_locations, 1 + DBL_EPSILON);
+}
+
+}
+}
 
 #endif

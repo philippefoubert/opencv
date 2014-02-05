@@ -43,6 +43,8 @@
 #include "precomp.hpp"
 #include "opencl_kernels.hpp"
 
+#include "bufferpool.impl.hpp"
+
 /****************************************************************************************\
 *                           [scaled] Identity matrix initialization                      *
 \****************************************************************************************/
@@ -157,6 +159,12 @@ void MatAllocator::copy(UMatData* usrc, UMatData* udst, int dims, const size_t s
         memcpy(ptrs[1], ptrs[0], planesz);
 }
 
+BufferPoolController* MatAllocator::getBufferPoolController() const
+{
+    static DummyBufferPoolController dummy;
+    return &dummy;
+}
+
 class StdMatAllocator : public MatAllocator
 {
 public:
@@ -191,7 +199,6 @@ public:
     bool allocate(UMatData* u, int /*accessFlags*/) const
     {
         if(!u) return false;
-        CV_XADD(&u->urefcount, 1);
         return true;
     }
 
@@ -214,8 +221,8 @@ public:
 
 MatAllocator* Mat::getStdAllocator()
 {
-    static StdMatAllocator allocator;
-    return &allocator;
+    static MatAllocator * allocator = new StdMatAllocator();
+    return allocator;
 }
 
 void swap( Mat& a, Mat& b )
@@ -1488,11 +1495,6 @@ Size _InputArray::size(int i) const
         return d_mat->size();
     }
 
-    if( k == OCL_MAT )
-    {
-        CV_Error(CV_StsNotImplemented, "This method is not implemented for oclMat yet");
-    }
-
     CV_Assert( k == CUDA_MEM );
     //if( k == CUDA_MEM )
     {
@@ -1672,11 +1674,6 @@ int _InputArray::dims(int i) const
         return 2;
     }
 
-    if( k == OCL_MAT )
-    {
-        return 2;
-    }
-
     CV_Assert( k == CUDA_MEM );
     //if( k == CUDA_MEM )
     {
@@ -1834,11 +1831,6 @@ bool _InputArray::empty() const
     if( k == OPENGL_BUFFER )
         return ((const ogl::Buffer*)obj)->empty();
 
-    if( k == OCL_MAT )
-    {
-        CV_Error(CV_StsNotImplemented, "This method is not implemented for oclMat yet");
-    }
-
     if( k == GPU_MAT )
         return ((const cuda::GpuMat*)obj)->empty();
 
@@ -1874,7 +1866,7 @@ bool _InputArray::isContinuous(int i) const
         return vv[i].isContinuous();
     }
 
-    CV_Error(CV_StsNotImplemented, "This method is not implemented for oclMat yet");
+    CV_Error(CV_StsNotImplemented, "Unknown/unsupported array type");
     return false;
 }
 
@@ -2915,6 +2907,9 @@ static bool ocl_transpose( InputArray _src, OutputArray _dst )
     ocl::Kernel k(kernelName.c_str(), ocl::core::transpose_oclsrc,
                   format("-D T=%s -D TILE_DIM=%d -D BLOCK_ROWS=%d",
                          ocl::memopTypeToStr(type), TILE_DIM, BLOCK_ROWS));
+    if (k.empty())
+        return false;
+
     if (inplace)
         k.args(ocl::KernelArg::ReadWriteNoSize(dst), dst.rows);
     else

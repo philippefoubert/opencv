@@ -98,14 +98,14 @@ void dumpOpenCLDevice()
     using namespace cv::ocl;
     try
     {
-        std::vector<PlatformInfo2> platforms;
+        std::vector<PlatformInfo> platforms;
         cv::ocl::getPlatfomsInfo(platforms);
         if (platforms.size() > 0)
         {
             DUMP_MESSAGE_STDOUT("OpenCL Platforms: ");
             for (size_t i = 0; i < platforms.size(); i++)
             {
-                const PlatformInfo2* platform = &platforms[i];
+                const PlatformInfo* platform = &platforms[i];
                 DUMP_MESSAGE_STDOUT("    " << platform->name().c_str());
                 Device current_device;
                 for (int j = 0; j < platform->deviceNumber(); j++)
@@ -160,16 +160,9 @@ void dumpOpenCLDevice()
         DUMP_MESSAGE_STDOUT("    Max memory allocation size = "<< maxMemAllocSizeStr);
         DUMP_PROPERTY_XML("cv_ocl_current_maxMemAllocSize", device.maxMemAllocSize());
 
-#if 0
-        const char* doubleSupportStr = device.haveDoubleSupport() ? "Yes" : "No";
-        DUMP_MESSAGE_STDOUT("    Double support = "<< doubleSupportStr);
-        DUMP_PROPERTY_XML("cv_ocl_current_haveDoubleSupport", device.haveDoubleSupport());
-#else
         const char* doubleSupportStr = device.doubleFPConfig() > 0 ? "Yes" : "No";
         DUMP_MESSAGE_STDOUT("    Double support = "<< doubleSupportStr);
         DUMP_PROPERTY_XML("cv_ocl_current_haveDoubleSupport", device.doubleFPConfig() > 0);
-
-#endif
 
         const char* isUnifiedMemoryStr = device.hostUnifiedMemory() ? "Yes" : "No";
         DUMP_MESSAGE_STDOUT("    Host unified memory = "<< isUnifiedMemoryStr);
