@@ -12,10 +12,8 @@
 //
 // Copyright (C) 2010-2012, Institute Of Software Chinese Academy Of Science, all rights reserved.
 // Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
+// Copyright (C) 2010-2012, Multicoreware, Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
-//
-// @Authors
-//    Zhang Ying, zhangying913@gmail.com
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -30,7 +28,7 @@
 //   * The name of the copyright holders may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
 //
-// This software is provided by the copyright holders and contributors as is and
+// This software is provided by the copyright holders and contributors "as is" and
 // any express or implied warranties, including, but not limited to, the implied
 // warranties of merchantability and fitness for a particular purpose are disclaimed.
 // In no event shall the Intel Corporation or contributors be liable for any direct,
@@ -43,39 +41,77 @@
 //
 //M*/
 
-#ifdef DOUBLE_SUPPORT
-#ifdef cl_amd_fp64
-#pragma OPENCL EXTENSION cl_amd_fp64:enable
-#elif defined (cl_khr_fp64)
-#pragma OPENCL EXTENSION cl_khr_fp64:enable
-#endif
-#endif
+#include "test_precomp.hpp"
+#include "opencv2/ts/ocl_test.hpp"
 
-__kernel void threshold(__global const uchar * srcptr, int src_step, int src_offset,
-                        __global uchar * dstptr, int dst_step, int dst_offset, int rows, int cols,
-                        T1 thresh, T1 max_val)
+#ifdef HAVE_OPENCL
+
+namespace cvtest {
+namespace ocl {
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+// Optical_flow_tvl1
+namespace
 {
-    int gx = get_global_id(0);
-    int gy = get_global_id(1);
-
-    if (gx < cols && gy < rows)
-    {
-        int src_index = mad24(gy, src_step, mad24(gx, (int)sizeof(T), src_offset));
-        int dst_index = mad24(gy, dst_step, mad24(gx, (int)sizeof(T), dst_offset));
-
-        T sdata = *(__global const T *)(srcptr + src_index);
-        __global T * dst = (__global T *)(dstptr + dst_index);
-
-#ifdef THRESH_BINARY
-        dst[0] = sdata > (T)(thresh) ? (T)(max_val) : (T)(0);
-#elif defined THRESH_BINARY_INV
-        dst[0] = sdata > (T)(thresh) ? (T)(0) : (T)(max_val);
-#elif defined THRESH_TRUNC
-        dst[0] = sdata > (T)(thresh) ? (T)(thresh) : sdata;
-#elif defined THRESH_TOZERO
-        dst[0] = sdata > (T)(thresh) ? sdata : (T)(0);
-#elif defined THRESH_TOZERO_INV
-        dst[0] = sdata > (T)(thresh) ? (T)(0) : sdata;
-#endif
-    }
+    IMPLEMENT_PARAM_CLASS(UseInitFlow, bool)
+    IMPLEMENT_PARAM_CLASS(MedianFiltering, int)
+    IMPLEMENT_PARAM_CLASS(ScaleStep, double)
 }
+
+PARAM_TEST_CASE(OpticalFlowTVL1, UseInitFlow, MedianFiltering, ScaleStep)
+{
+    bool useInitFlow;
+    int medianFiltering;
+    double scaleStep;
+    virtual void SetUp()
+    {
+        useInitFlow = GET_PARAM(0);
+        medianFiltering = GET_PARAM(1);
+        scaleStep = GET_PARAM(2);
+    }
+};
+
+OCL_TEST_P(OpticalFlowTVL1, Mat)
+{
+    cv::Mat frame0 = readImage("optflow/RubberWhale1.png", cv::IMREAD_GRAYSCALE);
+    ASSERT_FALSE(frame0.empty());
+
+    cv::Mat frame1 = readImage("optflow/RubberWhale2.png", cv::IMREAD_GRAYSCALE);
+    ASSERT_FALSE(frame1.empty());
+
+    cv::Mat flow; cv::UMat uflow;
+
+    //create algorithm
+    cv::Ptr<cv::DenseOpticalFlow> alg = cv::createOptFlow_DualTVL1();
+
+    //set parameters
+    alg->set("scaleStep", scaleStep);
+    alg->setInt("medianFiltering", medianFiltering);
+
+    //create initial flow as result of algorithm calculation
+    if (useInitFlow)
+    {
+        OCL_ON(alg->calc(frame0, frame1, uflow));
+        uflow.copyTo(flow);
+    }
+
+    //set flag to use initial flow as it is ready to use
+    alg->setBool("useInitialFlow", useInitFlow);
+
+    OCL_OFF(alg->calc(frame0, frame1, flow));
+    OCL_ON(alg->calc(frame0, frame1, uflow));
+
+    EXPECT_MAT_SIMILAR(flow, uflow, 1e-2);
+}
+
+OCL_INSTANTIATE_TEST_CASE_P(Video, OpticalFlowTVL1,
+    Combine(
+    Values(UseInitFlow(false), UseInitFlow(true)),
+    Values(MedianFiltering(3), MedianFiltering(-1)),
+    Values(ScaleStep(0.3),ScaleStep(0.5))
+    )
+    );
+
+} } // namespace cvtest::ocl
+
+#endif // HAVE_OPENCL

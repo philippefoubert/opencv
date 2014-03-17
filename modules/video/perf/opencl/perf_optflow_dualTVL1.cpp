@@ -47,88 +47,66 @@
 #include "perf_precomp.hpp"
 #include "opencv2/ts/ocl_perf.hpp"
 
+using std::tr1::make_tuple;
+
 #ifdef HAVE_OPENCL
 
 namespace cvtest {
 namespace ocl {
 
-///////////// PyrDown //////////////////////
+///////////// OpticalFlow Dual TVL1 ////////////////////////
+typedef tuple< tuple<int, double>, bool> OpticalFlowDualTVL1Params;
+typedef TestBaseWithParam<OpticalFlowDualTVL1Params> OpticalFlowDualTVL1Fixture;
 
-typedef Size_MatType PyrDownFixture;
+OCL_PERF_TEST_P(OpticalFlowDualTVL1Fixture, OpticalFlowDualTVL1,
+            ::testing::Combine(
+                        ::testing::Values(make_tuple<int, double>(-1, 0.3),
+                                          make_tuple<int, double>(3, 0.5)),
+                        ::testing::Bool()
+                                )
+            )
+    {
+        Mat frame0 = imread(getDataPath("cv/optflow/RubberWhale1.png"), cv::IMREAD_GRAYSCALE);
+        ASSERT_FALSE(frame0.empty()) << "can't load RubberWhale1.png";
 
-OCL_PERF_TEST_P(PyrDownFixture, PyrDown,
-            ::testing::Combine(OCL_TEST_SIZES, OCL_TEST_TYPES_134))
-{
-    const Size_MatType_t params = GetParam();
-    const Size srcSize = get<0>(params);
-    const int type = get<1>(params);
-    const Size dstSize((srcSize.height + 1) >> 1, (srcSize.width + 1) >> 1);
-    const double eps = CV_MAT_DEPTH(type) <= CV_32S ? 1 : 1e-5;
+        Mat frame1 = imread(getDataPath("cv/optflow/RubberWhale2.png"), cv::IMREAD_GRAYSCALE);
+        ASSERT_FALSE(frame1.empty()) << "can't load RubberWhale2.png";
 
-    checkDeviceMaxMemoryAllocSize(srcSize, type);
-    checkDeviceMaxMemoryAllocSize(dstSize, type);
+        const Size srcSize = frame0.size();
 
-    UMat src(srcSize, type), dst(dstSize, type);
-    declare.in(src, WARMUP_RNG).out(dst);
+        const OpticalFlowDualTVL1Params params = GetParam();
+        const tuple<int, double> filteringScale = get<0>(params);
+            const int medianFiltering = get<0>(filteringScale);
+            const double scaleStep = get<1>(filteringScale);
+        const bool useInitFlow = get<1>(params);
+        double eps = 0.9;
 
-    OCL_TEST_CYCLE() cv::pyrDown(src, dst);
+        UMat uFrame0; frame0.copyTo(uFrame0);
+        UMat uFrame1; frame1.copyTo(uFrame1);
+        UMat uFlow(srcSize, CV_32FC2);
+        declare.in(uFrame0, uFrame1, WARMUP_READ).out(uFlow, WARMUP_READ);
 
-    SANITY_CHECK(dst, eps);
+        //create algorithm
+        cv::Ptr<cv::DenseOpticalFlow> alg = cv::createOptFlow_DualTVL1();
+
+        //set parameters
+        alg->set("scaleStep", scaleStep);
+        alg->setInt("medianFiltering", medianFiltering);
+
+        if (useInitFlow)
+        {
+            //calculate initial flow as result of optical flow
+            alg->calc(uFrame0, uFrame1, uFlow);
+        }
+
+        //set flag to use initial flow
+        alg->setBool("useInitialFlow", useInitFlow);
+        OCL_TEST_CYCLE()
+            alg->calc(uFrame0, uFrame1, uFlow);
+
+        SANITY_CHECK(uFlow, eps, ERROR_RELATIVE);
+    }
 }
-
-///////////// PyrUp ////////////////////////
-
-typedef Size_MatType PyrUpFixture;
-
-OCL_PERF_TEST_P(PyrUpFixture, PyrUp,
-            ::testing::Combine(OCL_TEST_SIZES, OCL_TEST_TYPES_134))
-{
-    const Size_MatType_t params = GetParam();
-    const Size srcSize = get<0>(params);
-    const int type = get<1>(params);
-    const Size dstSize(srcSize.height << 1, srcSize.width << 1);
-    const double eps = CV_MAT_DEPTH(type) <= CV_32S ? 1 : 1e-5;
-
-    checkDeviceMaxMemoryAllocSize(srcSize, type);
-    checkDeviceMaxMemoryAllocSize(dstSize, type);
-
-    UMat src(srcSize, type), dst(dstSize, type);
-    declare.in(src, WARMUP_RNG).out(dst);
-
-    OCL_TEST_CYCLE() cv::pyrDown(src, dst);
-
-    SANITY_CHECK(dst, eps);
-}
-
-///////////// buildPyramid ////////////////////////
-
-typedef Size_MatType BuildPyramidFixture;
-
-OCL_PERF_TEST_P(BuildPyramidFixture, BuildPyramid,
-                ::testing::Combine(OCL_TEST_SIZES, OCL_TEST_TYPES_134))
-{
-    const Size_MatType_t params = GetParam();
-    const Size srcSize = get<0>(params);
-    const int type = get<1>(params), maxLevel = 5;
-    const double eps = CV_MAT_DEPTH(type) <= CV_32S ? 1 : 1e-5;
-
-    checkDeviceMaxMemoryAllocSize(srcSize, type);
-
-    std::vector<UMat> dst(maxLevel);
-    UMat src(srcSize, type);
-    declare.in(src, WARMUP_RNG);
-
-    OCL_TEST_CYCLE() cv::buildPyramid(src, dst, maxLevel);
-
-    UMat dst0 = dst[0], dst1 = dst[1], dst2 = dst[2], dst3 = dst[3], dst4 = dst[4];
-
-    SANITY_CHECK(dst0, eps);
-    SANITY_CHECK(dst1, eps);
-    SANITY_CHECK(dst2, eps);
-    SANITY_CHECK(dst3, eps);
-    SANITY_CHECK(dst4, eps);
-}
-
-} } // namespace cvtest::ocl
+} // namespace cvtest::ocl
 
 #endif // HAVE_OPENCL
