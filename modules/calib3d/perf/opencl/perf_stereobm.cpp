@@ -10,7 +10,8 @@
 //                           License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2013, OpenCV Foundation, all rights reserved.
+// Copyright (C) 2010-2012, Multicoreware, Inc., all rights reserved.
+// Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -26,7 +27,7 @@
 //   * The name of the copyright holders may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
 //
-// This software is provided by the copyright holders and contributors "as is" and
+// This software is provided by the copyright holders and contributors as is and
 // any express or implied warranties, including, but not limited to, the implied
 // warranties of merchantability and fitness for a particular purpose are disclaimed.
 // In no event shall the Intel Corporation or contributors be liable for any direct,
@@ -37,55 +38,40 @@
 // or tort (including negligence or otherwise) arising in any way out of
 // the use of this software, even if advised of the possibility of such damage.
 //
-// Authors:
-//  * Anatoly Baksheev, Itseez Inc.  myname.mysurname <> mycompany.com
-//
 //M*/
 
-#ifndef __vtkOBJWriter_h
-#define __vtkOBJWriter_h
+#include "perf_precomp.hpp"
+#include "opencv2/ts/ocl_perf.hpp"
 
-#include <vtkWriter.h>
+#ifdef HAVE_OPENCL
 
-namespace cv
+namespace cvtest {
+namespace ocl {
+
+typedef std::tr1::tuple<int, int> StereoBMFixture_t;
+typedef TestBaseWithParam<StereoBMFixture_t> StereoBMFixture;
+
+OCL_PERF_TEST_P(StereoBMFixture, StereoBM, ::testing::Combine(OCL_PERF_ENUM(32, 64, 128), OCL_PERF_ENUM(11,21) ) )
 {
-    namespace viz
-    {
-        class vtkOBJWriter : public vtkWriter
-        {
-        public:
-          static vtkOBJWriter *New();
-          vtkTypeMacro(vtkOBJWriter,vtkWriter)
-          void PrintSelf(ostream& os, vtkIndent indent);
+    const int n_disp = get<0>(GetParam()), winSize = get<1>(GetParam());
+    UMat left, right, disp;
 
-          vtkGetMacro(DecimalPrecision, int)
-          vtkSetMacro(DecimalPrecision, int)
+    imread(getDataPath("gpu/stereobm/aloe-L.png"), IMREAD_GRAYSCALE).copyTo(left);
+    imread(getDataPath("gpu/stereobm/aloe-R.png"), IMREAD_GRAYSCALE).copyTo(right);
+    ASSERT_FALSE(left.empty());
+    ASSERT_FALSE(right.empty());
 
-          // Description:
-          // Specify file name of data file to write.
-          vtkSetStringMacro(FileName)
-          vtkGetStringMacro(FileName)
+    declare.in(left, right);
 
-          // Description:
-          // Get the input to this writer.
-          vtkPolyData* GetInput();
-          vtkPolyData* GetInput(int port);
+    Ptr<StereoBM> bm = createStereoBM( n_disp, winSize );
+    bm->setPreFilterType(bm->PREFILTER_XSOBEL);
+    bm->setTextureThreshold(0);
 
-        protected:
-          vtkOBJWriter();
-          ~vtkOBJWriter();
+    OCL_TEST_CYCLE() bm->compute(left, right, disp);
 
-          void WriteData();
-          int FillInputPortInformation(int port, vtkInformation *info);
-
-          int DecimalPrecision;
-          char *FileName;
-
-        private:
-          vtkOBJWriter(const vtkOBJWriter&);  // Not implemented.
-          void operator=(const vtkOBJWriter&);  // Not implemented.
-        };
-    }
+    SANITY_CHECK(disp, 1e-3, ERROR_RELATIVE);
 }
 
+}//ocl
+}//cvtest
 #endif

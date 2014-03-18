@@ -1,4 +1,4 @@
-/*M///////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////
 //
 //  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
 //
@@ -10,7 +10,8 @@
 //                           License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2013, OpenCV Foundation, all rights reserved.
+// Copyright (C) 2010-2012, Institute Of Software Chinese Academy Of Science, all rights reserved.
+// Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -37,55 +38,60 @@
 // or tort (including negligence or otherwise) arising in any way out of
 // the use of this software, even if advised of the possibility of such damage.
 //
-// Authors:
-//  * Anatoly Baksheev, Itseez Inc.  myname.mysurname <> mycompany.com
-//
 //M*/
 
-#ifndef __vtkOBJWriter_h
-#define __vtkOBJWriter_h
+#include "test_precomp.hpp"
+#include "cvconfig.h"
+#include "opencv2/ts/ocl_test.hpp"
 
-#include <vtkWriter.h>
+#ifdef HAVE_OPENCL
 
-namespace cv
+namespace cvtest {
+namespace ocl {
+
+PARAM_TEST_CASE(StereoBMFixture, int, int)
 {
-    namespace viz
+    int n_disp;
+    int winSize;
+    Mat left, right, disp;
+    UMat uleft, uright, udisp;
+
+    virtual void SetUp()
     {
-        class vtkOBJWriter : public vtkWriter
-        {
-        public:
-          static vtkOBJWriter *New();
-          vtkTypeMacro(vtkOBJWriter,vtkWriter)
-          void PrintSelf(ostream& os, vtkIndent indent);
+        n_disp  = GET_PARAM(0);
+        winSize = GET_PARAM(1);
 
-          vtkGetMacro(DecimalPrecision, int)
-          vtkSetMacro(DecimalPrecision, int)
+        left  = readImage("gpu/stereobm/aloe-L.png", IMREAD_GRAYSCALE);
+        right = readImage("gpu/stereobm/aloe-R.png", IMREAD_GRAYSCALE);
 
-          // Description:
-          // Specify file name of data file to write.
-          vtkSetStringMacro(FileName)
-          vtkGetStringMacro(FileName)
+        ASSERT_FALSE(left.empty());
+        ASSERT_FALSE(right.empty());
 
-          // Description:
-          // Get the input to this writer.
-          vtkPolyData* GetInput();
-          vtkPolyData* GetInput(int port);
-
-        protected:
-          vtkOBJWriter();
-          ~vtkOBJWriter();
-
-          void WriteData();
-          int FillInputPortInformation(int port, vtkInformation *info);
-
-          int DecimalPrecision;
-          char *FileName;
-
-        private:
-          vtkOBJWriter(const vtkOBJWriter&);  // Not implemented.
-          void operator=(const vtkOBJWriter&);  // Not implemented.
-        };
+        left.copyTo(uleft);
+        right.copyTo(uright);
     }
+
+    void Near(double eps = 0.0)
+    {
+        EXPECT_MAT_NEAR_RELATIVE(disp, udisp, eps);
+    }
+};
+
+OCL_TEST_P(StereoBMFixture, StereoBM)
+{
+    Ptr<StereoBM> bm = createStereoBM( n_disp, winSize);
+    bm->setPreFilterType(bm->PREFILTER_XSOBEL);
+    bm->setTextureThreshold(0);
+
+    OCL_OFF(bm->compute(left, right, disp));
+    OCL_ON(bm->compute(uleft, uright, udisp));
+
+    Near(1e-3);
 }
 
-#endif
+OCL_INSTANTIATE_TEST_CASE_P(StereoMatcher, StereoBMFixture, testing::Combine(testing::Values(32, 64, 128),
+                                       testing::Values(11, 21)));
+}//ocl
+}//cvtest
+
+#endif //HAVE_OPENCL
