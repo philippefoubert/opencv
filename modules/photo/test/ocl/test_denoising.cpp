@@ -19,8 +19,8 @@ PARAM_TEST_CASE(FastNlMeansDenoisingTestBase, Channels, bool)
     float h;
     bool use_roi;
 
-    TEST_DECLARE_INPUT_PARAMETER(src)
-    TEST_DECLARE_OUTPUT_PARAMETER(dst)
+    TEST_DECLARE_INPUT_PARAMETER(src);
+    TEST_DECLARE_OUTPUT_PARAMETER(dst);
 
     virtual void SetUp()
     {
@@ -52,8 +52,8 @@ PARAM_TEST_CASE(FastNlMeansDenoisingTestBase, Channels, bool)
         Border dstBorder = randomBorder(0, use_roi ? MAX_VALUE : 0);
         randomSubMat(dst, dst_roi, roiSize, dstBorder, type, 0, 255);
 
-        UMAT_UPLOAD_INPUT_PARAMETER(src)
-        UMAT_UPLOAD_OUTPUT_PARAMETER(dst)
+        UMAT_UPLOAD_INPUT_PARAMETER(src);
+        UMAT_UPLOAD_OUTPUT_PARAMETER(dst);
     }
 };
 
@@ -68,13 +68,13 @@ OCL_TEST_P(FastNlMeansDenoising, Mat)
         OCL_OFF(cv::fastNlMeansDenoising(src_roi, dst_roi, h, templateWindowSize, searchWindowSize));
         OCL_ON(cv::fastNlMeansDenoising(usrc_roi, udst_roi, h, templateWindowSize, searchWindowSize));
 
-        OCL_EXPECT_MATS_NEAR(dst, 1)
+        OCL_EXPECT_MATS_NEAR(dst, 1);
     }
 }
 
-typedef FastNlMeansDenoisingTestBase fastNlMeansDenoisingColored;
+typedef FastNlMeansDenoisingTestBase FastNlMeansDenoisingColored;
 
-OCL_TEST_P(fastNlMeansDenoisingColored, Mat)
+OCL_TEST_P(FastNlMeansDenoisingColored, Mat)
 {
     for (int j = 0; j < test_loop_times; j++)
     {
@@ -83,12 +83,12 @@ OCL_TEST_P(fastNlMeansDenoisingColored, Mat)
         OCL_OFF(cv::fastNlMeansDenoisingColored(src_roi, dst_roi, h, h, templateWindowSize, searchWindowSize));
         OCL_ON(cv::fastNlMeansDenoisingColored(usrc_roi, udst_roi, h, h, templateWindowSize, searchWindowSize));
 
-        OCL_EXPECT_MATS_NEAR(dst, 1)
+        OCL_EXPECT_MATS_NEAR(dst, 1);
     }
 }
 
 OCL_INSTANTIATE_TEST_CASE_P(Photo, FastNlMeansDenoising, Combine(Values(1, 2), Bool()));
-OCL_INSTANTIATE_TEST_CASE_P(Photo, fastNlMeansDenoisingColored, Combine(Values(Channels(3)), Bool()));
+OCL_INSTANTIATE_TEST_CASE_P(Photo, FastNlMeansDenoisingColored, Combine(Values(3, 4), Bool()));
 
 } } // namespace cvtest::ocl
 

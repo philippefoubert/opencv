@@ -69,8 +69,8 @@ PARAM_TEST_CASE(FilterTestBase, MatType,
     double param;
     bool useRoi;
 
-    TEST_DECLARE_INPUT_PARAMETER(src)
-    TEST_DECLARE_OUTPUT_PARAMETER(dst)
+    TEST_DECLARE_INPUT_PARAMETER(src);
+    TEST_DECLARE_OUTPUT_PARAMETER(dst);
 
     virtual void SetUp()
     {
@@ -94,8 +94,8 @@ PARAM_TEST_CASE(FilterTestBase, MatType,
         Border dstBorder = randomBorder(0, useRoi ? MAX_VALUE : 0);
         randomSubMat(dst, dst_roi, roiSize, dstBorder, type, -60, 70);
 
-        UMAT_UPLOAD_INPUT_PARAMETER(src)
-        UMAT_UPLOAD_OUTPUT_PARAMETER(dst)
+        UMAT_UPLOAD_INPUT_PARAMETER(src);
+        UMAT_UPLOAD_OUTPUT_PARAMETER(dst);
     }
 
     void Near()
@@ -112,15 +112,9 @@ PARAM_TEST_CASE(FilterTestBase, MatType,
     void Near(double threshold, bool relative)
     {
         if (relative)
-        {
-            EXPECT_MAT_NEAR_RELATIVE(dst, udst, threshold);
-            EXPECT_MAT_NEAR_RELATIVE(dst_roi, udst_roi, threshold);
-        }
+            OCL_EXPECT_MATS_NEAR_RELATIVE(dst, threshold);
         else
-        {
-            EXPECT_MAT_NEAR(dst, udst, threshold);
-            EXPECT_MAT_NEAR(dst_roi, udst_roi, threshold);
-        }
+            OCL_EXPECT_MATS_NEAR(dst, threshold);
     }
 };
 
@@ -355,28 +349,28 @@ OCL_INSTANTIATE_TEST_CASE_P(Filter, GaussianBlurTest, Combine(
                             Bool()));
 
 OCL_INSTANTIATE_TEST_CASE_P(Filter, Erode, Combine(
-                            Values(CV_8UC1, CV_8UC4, CV_32FC1, CV_32FC4, CV_64FC1, CV_64FC4),
+                            Values(CV_8UC1, CV_8UC3, CV_8UC4, CV_32FC1, CV_32FC3, CV_32FC4, CV_64FC1, CV_64FC4),
                             Values(3, 5, 7),
                             Values(Size(0,0)),//not used
                             Values((BorderType)BORDER_CONSTANT),//not used
                             Values(1.0, 2.0, 3.0),
-                            Bool() ) );
+                            Bool()));
 
 OCL_INSTANTIATE_TEST_CASE_P(Filter, Dilate, Combine(
-                            Values(CV_8UC1, CV_8UC4, CV_32FC1, CV_32FC4, CV_64FC1, CV_64FC4),
+                            Values(CV_8UC1, CV_8UC3, CV_8UC4, CV_32FC1, CV_32FC3, CV_32FC4, CV_64FC1, CV_64FC4),
                             Values(3, 5, 7),
                             Values(Size(0,0)),//not used
                             Values((BorderType)BORDER_CONSTANT),//not used
                             Values(1.0, 2.0, 3.0),
-                            Bool() ) );
+                            Bool()));
 
 OCL_INSTANTIATE_TEST_CASE_P(Filter, MorphologyEx, Combine(
-                            Values(CV_8UC1, CV_8UC4, CV_32FC1, CV_32FC4, CV_64FC1, CV_64FC4),
+                            Values(CV_8UC1, CV_8UC3, CV_8UC4, CV_32FC1, CV_32FC3, CV_32FC4, CV_64FC1, CV_64FC4),
                             Values(3, 5, 7),
-                            Values(Size(0,0), Size(0,1), Size(0,2), Size(0,3), Size(0,4), Size(0,5),Size(0,6)),//uses as generator of operations
-                            Values((BorderType)BORDER_CONSTANT),//not used
+                            Values(Size(0, 0), Size(0, 1), Size(0, 2), Size(0, 3), Size(0, 4), Size(0, 5), Size(0, 6)), // used as generator of operations
+                            Values((BorderType)BORDER_CONSTANT),// not used
                             Values(1.0, 2.0, 3.0),
-                            Bool() ) );
+                            Bool()));
 
 
 } } // namespace cvtest::ocl
