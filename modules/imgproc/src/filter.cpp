@@ -47,7 +47,7 @@
                                     Base Image Filter
 \****************************************************************************************/
 
-#if defined HAVE_IPP && IPP_VERSION_MAJOR*100 + IPP_VERSION_MINOR >= 701
+#if IPP_VERSION_X100 >= 701
 #define USE_IPP_SEP_FILTERS 1
 #else
 #undef USE_IPP_SEP_FILTERS
@@ -1464,7 +1464,7 @@ private:
     int ippiOperator(const uchar* _src, uchar* _dst, int width, int cn) const
     {
         int _ksize = kernel.rows + kernel.cols - 1;
-        if ((1 != cn && 3 != cn) || width < _ksize*8)
+//        if ((1 != cn && 3 != cn) || width < _ksize*8)
             return 0;
 
         const float* src = (const float*)_src;

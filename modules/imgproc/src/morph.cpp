@@ -1136,7 +1136,7 @@ private:
     Scalar borderValue;
 };
 
-#if defined (HAVE_IPP) && (IPP_VERSION_MAJOR >= 8) && (IPP_VERSION_MINOR >= 1)
+#if IPP_VERSION_X100 >= 801
 static bool IPPMorphReplicate(int op, const Mat &src, Mat &dst, const Mat &kernel,
                               const Size& ksize, const Point &anchor, bool rectKernel)
 {
@@ -1228,6 +1228,9 @@ static bool IPPMorphReplicate(int op, const Mat &src, Mat &dst, const Mat &kerne
     }
     else
     {
+#if defined(HAVE_IPP_ICV_ONLY) // N/A: ippiFilterMin*/ippiFilterMax*
+        return false;
+#else
         IppiPoint point = {anchor.x, anchor.y};
 
         #define IPP_MORPH_CASE(cvtype, flavor, data_type) \
@@ -1257,6 +1260,7 @@ static bool IPPMorphReplicate(int op, const Mat &src, Mat &dst, const Mat &kerne
         }
 
         #undef IPP_MORPH_CASE
+#endif
     }
 }
 
@@ -1459,7 +1463,7 @@ static void morphOp( int op, InputArray _src, OutputArray _dst,
     Size ksize = kernel.data ? kernel.size() : Size(3,3);
     anchor = normalizeAnchor(anchor, ksize);
 
-#if defined (HAVE_IPP) && (IPP_VERSION_MAJOR >= 8) && (IPP_VERSION_MINOR >= 1)
+#if IPP_VERSION_X100 >= 801
     if( IPPMorphOp(op, _src, _dst, kernel, anchor, iterations, borderType, borderValue) )
         return;
 #endif

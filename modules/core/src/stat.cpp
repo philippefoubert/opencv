@@ -43,6 +43,7 @@
 #include "precomp.hpp"
 #include "opencl_kernels.hpp"
 #include <climits>
+#include <limits>
 
 namespace cv
 {
@@ -932,10 +933,10 @@ void cv::meanStdDev( InputArray _src, OutputArray _mean, OutputArray _sdv, Input
             dcn_stddev = (int)stddev.total();
             pstddev = (Ipp64f *)stddev.data;
         }
-        for( int k = cn; k < dcn_mean; k++ )
-            pmean[k] = 0;
-        for( int k = cn; k < dcn_stddev; k++ )
-            pstddev[k] = 0;
+        for( int c = cn; c < dcn_mean; c++ )
+            pmean[c] = 0;
+        for( int c = cn; c < dcn_stddev; c++ )
+            pstddev[c] = 0;
         IppiSize sz = { cols, rows };
         int type = src.type();
         if( !mask.empty() )
@@ -971,7 +972,7 @@ void cv::meanStdDev( InputArray _src, OutputArray _mean, OutputArray _sdv, Input
             ippiMeanStdDevFuncC1 ippFuncC1 =
             type == CV_8UC1 ? (ippiMeanStdDevFuncC1)ippiMean_StdDev_8u_C1R :
             type == CV_16UC1 ? (ippiMeanStdDevFuncC1)ippiMean_StdDev_16u_C1R :
-#if (IPP_VERSION_MAJOR >= 8) && (IPP_VERSION_MINOR >= 1)
+#if (IPP_VERSION_X100 >= 801)
             type == CV_32FC1 ? (ippiMeanStdDevFuncC1)ippiMean_StdDev_32f_C1R ://Aug 2013: bug in IPP 7.1, 8.0
 #endif
             0;
@@ -2015,6 +2016,7 @@ double cv::norm( InputArray _src, int normType, InputArray _mask )
 #if defined (HAVE_IPP) && (IPP_VERSION_MAJOR >= 7)
     size_t total_size = src.total();
     int rows = src.size[0], cols = (int)(total_size/rows);
+
     if( (src.dims == 2 || (src.isContinuous() && mask.isContinuous()))
         && cols > 0 && (size_t)rows*cols == total_size
         && (normType == NORM_INF || normType == NORM_L1 ||
@@ -2029,7 +2031,7 @@ double cv::norm( InputArray _src, int normType, InputArray _mask )
                 normType == NORM_INF ?
                 (type == CV_8UC1 ? (ippiMaskNormFuncC1)ippiNorm_Inf_8u_C1MR :
                 type == CV_8SC1 ? (ippiMaskNormFuncC1)ippiNorm_Inf_8s_C1MR :
-                type == CV_16UC1 ? (ippiMaskNormFuncC1)ippiNorm_Inf_16u_C1MR :
+//                type == CV_16UC1 ? (ippiMaskNormFuncC1)ippiNorm_Inf_16u_C1MR :
                 type == CV_32FC1 ? (ippiMaskNormFuncC1)ippiNorm_Inf_32f_C1MR :
                 0) :
             normType == NORM_L1 ?
@@ -2112,7 +2114,7 @@ double cv::norm( InputArray _src, int normType, InputArray _mask )
                 type == CV_16UC3 ? (ippiNormFuncNoHint)ippiNorm_Inf_16u_C3R :
                 type == CV_16UC4 ? (ippiNormFuncNoHint)ippiNorm_Inf_16u_C4R :
                 type == CV_16SC1 ? (ippiNormFuncNoHint)ippiNorm_Inf_16s_C1R :
-#if (IPP_VERSION_MAJOR >= 8) && (IPP_VERSION_MINOR >= 1)
+#if (IPP_VERSION_X100 >= 801)
                 type == CV_16SC3 ? (ippiNormFuncNoHint)ippiNorm_Inf_16s_C3R : //Aug 2013: problem in IPP 7.1, 8.0 : -32768
                 type == CV_16SC4 ? (ippiNormFuncNoHint)ippiNorm_Inf_16s_C4R : //Aug 2013: problem in IPP 7.1, 8.0 : -32768
 #endif
@@ -2363,7 +2365,7 @@ double cv::norm( InputArray _src1, InputArray _src2, int normType, InputArray _m
 #if defined (HAVE_IPP) && (IPP_VERSION_MAJOR >= 7)
         Mat src1 = _src1.getMat(), src2 = _src2.getMat(), mask = _mask.getMat();
 
-        normType &= 7;
+        normType &= NORM_TYPE_MASK;
         CV_Assert( normType == NORM_INF || normType == NORM_L1 || normType == NORM_L2 || normType == NORM_L2SQR ||
                 ((normType == NORM_HAMMING || normType == NORM_HAMMING2) && src1.type() == CV_8U) );
         size_t total_size = src1.total();
@@ -2544,7 +2546,7 @@ double cv::norm( InputArray _src1, InputArray _src2, int normType, InputArray _m
                 type == CV_16UC3 ? (ippiNormDiffFuncNoHint)ippiNormDiff_Inf_16u_C3R :
                 type == CV_16UC4 ? (ippiNormDiffFuncNoHint)ippiNormDiff_Inf_16u_C4R :
                 type == CV_16SC1 ? (ippiNormDiffFuncNoHint)ippiNormDiff_Inf_16s_C1R :
-#if (IPP_VERSION_MAJOR >= 8) && (IPP_VERSION_MINOR >= 1)
+#if (IPP_VERSION_X100 >= 801)
                 type == CV_16SC3 ? (ippiNormDiffFuncNoHint)ippiNormDiff_Inf_16s_C3R : //Aug 2013: problem in IPP 7.1, 8.0 : -32768
                 type == CV_16SC4 ? (ippiNormDiffFuncNoHint)ippiNormDiff_Inf_16s_C4R : //Aug 2013: problem in IPP 7.1, 8.0 : -32768
 #endif
