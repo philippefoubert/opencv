@@ -341,6 +341,84 @@ static bool ocl_matchTemplate( InputArray _img, InputArray _templ, OutputArray _
 
 #endif
 
+#if defined HAVE_IPP && IPP_VERSION_MAJOR >= 7 && !defined HAVE_IPP_ICV_ONLY
+
+typedef IppStatus (CV_STDCALL * ippimatchTemplate)(const void*, int, IppiSize, const void*, int, IppiSize, Ipp32f* , int , IppEnum , Ipp8u*);
+
+static bool ipp_crossCorr(const Mat& src, const Mat& tpl, Mat& dst)
+{
+    if (src.channels()!= 1)
+        return false;
+
+    IppStatus status;
+
+    IppiSize srcRoiSize = {src.cols,src.rows};
+    IppiSize tplRoiSize = {tpl.cols,tpl.rows};
+
+    Ipp8u *pBuffer;
+    int bufSize=0;
+
+    int depth = src.depth();
+
+    ippimatchTemplate ippFunc =
+            depth==CV_8U ? (ippimatchTemplate)ippiCrossCorrNorm_8u32f_C1R:
+            depth==CV_32F? (ippimatchTemplate)ippiCrossCorrNorm_32f_C1R: 0;
+
+    if (ippFunc==0)
+        return false;
+
+    IppEnum funCfg = (IppEnum)(ippAlgAuto | ippiNormNone | ippiROIValid);
+
+    status = ippiCrossCorrNormGetBufferSize(srcRoiSize, tplRoiSize, funCfg, &bufSize);
+    if ( status < 0 )
+        return false;
+
+    pBuffer = ippsMalloc_8u( bufSize );
+
+    status = ippFunc(src.data, (int)src.step, srcRoiSize, tpl.data, (int)tpl.step, tplRoiSize, (Ipp32f*)dst.data, (int)dst.step, funCfg, pBuffer);
+
+    ippsFree( pBuffer );
+    return status >= 0;
+}
+
+static bool ipp_sqrDistance(const Mat& src, const Mat& tpl, Mat& dst)
+{
+    if (src.channels()!= 1)
+        return false;
+
+    IppStatus status;
+
+    IppiSize srcRoiSize = {src.cols,src.rows};
+    IppiSize tplRoiSize = {tpl.cols,tpl.rows};
+
+    Ipp8u *pBuffer;
+    int bufSize=0;
+
+    int depth = src.depth();
+
+    ippimatchTemplate ippFunc =
+            depth==CV_8U ? (ippimatchTemplate)ippiSqrDistanceNorm_8u32f_C1R:
+            depth==CV_32F? (ippimatchTemplate)ippiSqrDistanceNorm_32f_C1R: 0;
+
+    if (ippFunc==0)
+        return false;
+
+    IppEnum funCfg = (IppEnum)(ippAlgAuto | ippiNormNone | ippiROIValid);
+
+    status = ippiSqrDistanceNormGetBufferSize(srcRoiSize, tplRoiSize, funCfg, &bufSize);
+    if ( status < 0 )
+        return false;
+
+    pBuffer = ippsMalloc_8u( bufSize );
+
+    status = ippFunc(src.data, (int)src.step, srcRoiSize, tpl.data, (int)tpl.step, tplRoiSize, (Ipp32f*)dst.data, (int)dst.step, funCfg, pBuffer);
+
+    ippsFree( pBuffer );
+    return status >= 0;
+}
+
+#endif
+
 void crossCorr( const Mat& img, const Mat& _templ, Mat& corr,
                 Size corrsize, int ctype,
                 Point anchor, double delta, int borderType )
@@ -560,7 +638,16 @@ void cv::matchTemplate( InputArray _img, InputArray _templ, OutputArray _result,
         return;
 #endif
 
+#if defined HAVE_IPP && IPP_VERSION_MAJOR >= 7 && !defined HAVE_IPP_ICV_ONLY
+    if (method == CV_TM_SQDIFF && ipp_sqrDistance(img, templ, result))
+        return;
+#endif
+
     int cn = img.channels();
+
+#if defined HAVE_IPP && IPP_VERSION_MAJOR >= 7 && !defined HAVE_IPP_ICV_ONLY
+    if (!ipp_crossCorr(img, templ, result))
+#endif
     crossCorr( img, templ, result, result.size(), result.type(), Point(0,0), 0, 0);
 
     if( method == CV_TM_CCORR )
