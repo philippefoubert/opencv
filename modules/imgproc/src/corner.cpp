@@ -460,7 +460,7 @@ void cv::cornerMinEigenVal( InputArray _src, OutputArray _dst, int blockSize, in
     Mat src = _src.getMat();
     _dst.create( src.size(), CV_32FC1 );
     Mat dst = _dst.getMat();
-#if defined(HAVE_IPP) && !defined(HAVE_IPP_ICV_ONLY) && (IPP_VERSION_MAJOR >= 8)
+#if defined(HAVE_IPP) && (IPP_VERSION_MAJOR >= 8)
     typedef IppStatus (CV_STDCALL * ippiMinEigenValGetBufferSize)(IppiSize, int, int, int*);
     typedef IppStatus (CV_STDCALL * ippiMinEigenVal)(const void*, int, Ipp32f*, int, IppiSize, IppiKernelType, int, int, Ipp8u*);
     IppiKernelType kerType;
@@ -544,7 +544,7 @@ void cv::cornerHarris( InputArray _src, OutputArray _dst, int blockSize, int ksi
             scale *= 2.0;
         if (depth == CV_8U)
             scale *= 255.0;
-        scale = std::pow(scale, -4.0f);
+        scale = std::pow(scale, -4.0);
 
         if (ippiHarrisCornerGetBufferSize(roisize, masksize, blockSize, datatype, cn, &bufsize) >= 0)
         {
