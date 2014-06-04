@@ -2742,7 +2742,8 @@ namespace cv {
 static bool ocl_setIdentity( InputOutputArray _m, const Scalar& s )
 {
     int type = _m.type(), depth = CV_MAT_DEPTH(type), cn = CV_MAT_CN(type),
-            sctype = CV_MAKE_TYPE(depth, cn == 3 ? 4 : cn);
+            sctype = CV_MAKE_TYPE(depth, cn == 3 ? 4 : cn),
+            rowsPerWI = ocl::Device::getDefault().isIntel() ? 4 : 1;
 
     ocl::Kernel k("setIdentity", ocl::core::set_identity_oclsrc,
                   format("-D T=%s -D T1=%s -D cn=%d -D ST=%s", ocl::memopTypeToStr(type),
@@ -2751,9 +2752,10 @@ static bool ocl_setIdentity( InputOutputArray _m, const Scalar& s )
         return false;
 
     UMat m = _m.getUMat();
-    k.args(ocl::KernelArg::WriteOnly(m), ocl::KernelArg::Constant(Mat(1, 1, sctype, s)));
+    k.args(ocl::KernelArg::WriteOnly(m), ocl::KernelArg::Constant(Mat(1, 1, sctype, s)),
+           rowsPerWI);
 
-    size_t globalsize[2] = { m.cols, m.rows };
+    size_t globalsize[2] = { m.cols, (m.rows + rowsPerWI - 1) / rowsPerWI };
     return k.run(2, globalsize, NULL, false);
 }
 
@@ -3428,11 +3430,60 @@ static bool ocl_reduce(InputArray _src, OutputArray _dst,
     const char * const ops[4] = { "OCL_CV_REDUCE_SUM", "OCL_CV_REDUCE_AVG",
                                   "OCL_CV_REDUCE_MAX", "OCL_CV_REDUCE_MIN" };
     char cvt[40];
-    ocl::Kernel k("reduce", ocl::core::reduce2_oclsrc,
-                  format("-D %s -D dim=%d -D cn=%d -D ddepth=%d -D srcT=%s -D dstT=%s -D convertToDT=%s%s",
-                         ops[op], dim, cn, ddepth, ocl::typeToStr(sdepth), ocl::typeToStr(ddepth),
-                         ocl::convertTypeStr(sdepth, ddepth, 1, cvt),
-                         doubleSupport ? " -D DOUBLE_SUPPORT" : ""));
+
+    const int min_opt_cols = 128;
+    if ((1 == dim) && (_src.cols() > min_opt_cols))
+    {
+        int buf_cols = 32;
+
+        cv::String build_opt_pre = format("-D BUF_COLS=%d -D %s -D dim=1 -D cn=%d -D ddepth=%d -D srcT=%s -D dstT=%s -D convertToDT=%s%s",
+                                 buf_cols, ops[op], cn, ddepth, ocl::typeToStr(sdepth), ocl::typeToStr(ddepth),
+                                 ocl::convertTypeStr(sdepth, ddepth, 1, cvt),
+                                 doubleSupport ? " -D DOUBLE_SUPPORT" : "");
+        ocl::Kernel kpre("reduce_horz_pre", ocl::core::reduce2_oclsrc, build_opt_pre);
+        if (kpre.empty())
+            return false;
+
+        cv::String build_opt_main = format("-D %s -D dim=1 -D cn=%d -D ddepth=%d -D srcT=%s -D dstT=%s -D convertToDT=noconvert%s",
+                                 ops[op], cn, ddepth, ocl::typeToStr(ddepth), ocl::typeToStr(ddepth),
+                                 doubleSupport ? " -D DOUBLE_SUPPORT" : "");
+        ocl::Kernel kmain("reduce", ocl::core::reduce2_oclsrc, build_opt_main);
+        if (kmain.empty())
+            return false;
+
+        UMat src = _src.getUMat();
+        Size dsize(1, src.rows);
+        _dst.create(dsize, dtype);
+        UMat dst = _dst.getUMat(), temp = dst;
+
+        if (op0 == CV_REDUCE_AVG && sdepth < CV_32S && ddepth0 < CV_32S)
+            temp.create(dsize, CV_32SC(cn));
+
+        UMat buf(src.rows, buf_cols, temp.type());
+
+        size_t globalSize[2] = { buf_cols, src.rows };
+
+        kpre.args(ocl::KernelArg::ReadOnly(src), ocl::KernelArg::WriteOnlyNoSize(buf));
+        if (!kpre.run(2, globalSize, NULL, false))
+            return false;
+
+        globalSize[0] = src.rows;
+        kmain.args(ocl::KernelArg::ReadOnly(buf), ocl::KernelArg::WriteOnlyNoSize(temp));
+        if (!kmain.run(1, globalSize, NULL, false))
+            return false;
+
+        if (op0 == CV_REDUCE_AVG)
+            temp.convertTo(dst, ddepth0, 1. / src.cols);
+
+        return true;
+    }
+
+    cv::String build_opt = format("-D %s -D dim=%d -D cn=%d -D ddepth=%d -D srcT=%s -D dstT=%s -D convertToDT=%s%s",
+                             ops[op], dim, cn, ddepth, ocl::typeToStr(sdepth), ocl::typeToStr(ddepth),
+                             ocl::convertTypeStr(sdepth, ddepth, 1, cvt),
+                             doubleSupport ? " -D DOUBLE_SUPPORT" : "");
+
+    ocl::Kernel k("reduce", ocl::core::reduce2_oclsrc, build_opt);
     if (k.empty())
         return false;
 
