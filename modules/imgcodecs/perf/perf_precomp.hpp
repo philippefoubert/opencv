@@ -6,18 +6,14 @@
 #  endif
 #endif
 
-#ifndef __OPENCV_TEST_PRECOMP_HPP__
-#define __OPENCV_TEST_PRECOMP_HPP__
+#ifndef __OPENCV_PERF_PRECOMP_HPP__
+#define __OPENCV_PERF_PRECOMP_HPP__
 
-#include <iostream>
 #include "opencv2/ts.hpp"
-#include "opencv2/imgproc.hpp"
-#include "opencv2/calib3d.hpp"
-#include "opencv2/highgui.hpp"
+#include "opencv2/imgcodecs.hpp"
 
-namespace cvtest
-{
-    void Rodrigues(const Mat& src, Mat& dst, Mat* jac=0);
-}
+#ifdef GTEST_CREATE_SHARED_LIBRARY
+#error no modules except ts should have GTEST_CREATE_SHARED_LIBRARY defined
+#endif
 
 #endif
