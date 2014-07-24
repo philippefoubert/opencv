@@ -44,6 +44,8 @@
 #define __OPENCV_HIGHGUI_HPP__
 
 #include "opencv2/core.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/videoio.hpp"
 
 
 ///////////////////////// graphical user interface //////////////////////////
@@ -201,5 +203,4 @@ CV_EXPORTS int createButton( const String& bar_name, ButtonCallback on_change,
                              bool initial_button_state = false);
 
 } // cv
-
 #endif
