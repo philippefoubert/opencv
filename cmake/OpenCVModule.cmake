@@ -585,25 +585,16 @@ macro(ocv_glob_module_sources)
   ocv_source_group("Src" DIRBASE "${CMAKE_CURRENT_LIST_DIR}/src" FILES ${lib_srcs} ${lib_int_hdrs})
   ocv_source_group("Include" DIRBASE "${CMAKE_CURRENT_LIST_DIR}/include" FILES ${lib_hdrs} ${lib_hdrs_detail})
 
-  if (exclude_cuda EQUAL -1)
+  set(lib_cuda_srcs "")
+  set(lib_cuda_hdrs "")
+  if(HAVE_CUDA AND exclude_cuda EQUAL -1)
     file(GLOB lib_cuda_srcs
          "${CMAKE_CURRENT_LIST_DIR}/src/cuda/*.cu"
     )
-    set(cuda_objs "")
-    set(lib_cuda_hdrs "")
-    if(HAVE_CUDA)
-      ocv_include_directories(${CUDA_INCLUDE_DIRS})
-      file(GLOB lib_cuda_hdrs
-           "${CMAKE_CURRENT_LIST_DIR}/src/cuda/*.hpp"
-      )
-
-      ocv_cuda_compile(cuda_objs ${lib_cuda_srcs} ${lib_cuda_hdrs})
-      source_group("Src\\Cuda"      FILES ${lib_cuda_srcs} ${lib_cuda_hdrs})
-    endif()
-  else()
-    set(cuda_objs "")
-    set(lib_cuda_srcs "")
-    set(lib_cuda_hdrs "")
+    file(GLOB lib_cuda_hdrs
+         "${CMAKE_CURRENT_LIST_DIR}/src/cuda/*.hpp"
+    )
+    source_group("Src\\Cuda"      FILES ${lib_cuda_srcs} ${lib_cuda_hdrs})
   endif()
 
   file(GLOB cl_kernels
@@ -622,7 +613,7 @@ macro(ocv_glob_module_sources)
   endif()
 
   ocv_set_module_sources(${_argn} HEADERS ${lib_hdrs} ${lib_hdrs_detail}
-                         SOURCES ${lib_srcs} ${lib_int_hdrs} ${cuda_objs} ${lib_cuda_srcs} ${lib_cuda_hdrs})
+                         SOURCES ${lib_srcs} ${lib_int_hdrs} ${lib_cuda_srcs} ${lib_cuda_hdrs})
 endmacro()
 
 # creates OpenCV module in current folder
@@ -954,9 +945,19 @@ function(ocv_add_samples)
   endif()
 
   if(INSTALL_C_EXAMPLES AND NOT WIN32 AND EXISTS "${samples_path}")
-    file(GLOB sample_files "${samples_path}/*")
+  file(GLOB DEPLOY_FILES_AND_DIRS "${samples_path}/*")
+    foreach(ITEM ${DEPLOY_FILES_AND_DIRS})
+        IF( IS_DIRECTORY "${ITEM}" )
+            LIST( APPEND sample_dirs "${ITEM}" )
+        ELSE()
+            LIST( APPEND sample_files "${ITEM}" )
+        ENDIF()
+    endforeach()
     install(FILES ${sample_files}
             DESTINATION ${OPENCV_SAMPLES_SRC_INSTALL_PATH}/${module_id}
             PERMISSIONS OWNER_READ GROUP_READ WORLD_READ COMPONENT samples)
+    install(DIRECTORY ${sample_dirs}
+            DESTINATION ${OPENCV_SAMPLES_SRC_INSTALL_PATH}/${module_id}
+            USE_SOURCE_PERMISSIONS COMPONENT samples)
   endif()
 endfunction()
