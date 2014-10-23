@@ -1,3 +1,7 @@
+#ifdef _DEBUG
+   /* PF quick work around to be able to build in debug with MinGW */
+   #undef _DEBUG
+#endif
 /*M///////////////////////////////////////////////////////////////////////////////////////
 //
 //  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
