@@ -3979,6 +3979,11 @@ public:
             u->markDeviceMemMapped(false);
             CV_Assert( (retval = clEnqueueUnmapMemObject(q,
                                 (cl_mem)u->handle, u->data, 0, 0, 0)) == CL_SUCCESS );
+            if (Device::getDefault().isAMD())
+            {
+                // required for multithreaded applications (see stitching test)
+                CV_OclDbgAssert(clFinish(q) == CL_SUCCESS);
+            }
             u->data = 0;
         }
         else if( u->copyOnMap() && u->deviceCopyObsolete() )
@@ -4624,6 +4629,9 @@ struct Image2D::Impl
 
     static bool isFormatSupported(cl_image_format format)
     {
+        if (!haveOpenCL())
+            CV_Error(Error::OpenCLApiCallError, "OpenCL runtime not found!");
+
         cl_context context = (cl_context)Context::getDefault().ptr();
         // Figure out how many formats are supported by this context.
         cl_uint numFormats = 0;
@@ -4647,6 +4655,10 @@ struct Image2D::Impl
 
     void init(const UMat &src, bool norm, bool alias)
     {
+        if (!haveOpenCL())
+            CV_Error(Error::OpenCLApiCallError, "OpenCL runtime not found!");
+
+        CV_Assert(!src.empty());
         CV_Assert(ocl::Device::getDefault().imageSupport());
 
         int err, depth = src.depth(), cn = src.channels();
@@ -4655,6 +4667,9 @@ struct Image2D::Impl
 
         if (!isFormatSupported(format))
             CV_Error(Error::OpenCLApiCallError, "Image format is not supported");
+
+        if (alias && !src.handle(ACCESS_RW))
+            CV_Error(Error::OpenCLApiCallError, "Incorrect UMat, handle is null");
 
         cl_context context = (cl_context)Context::getDefault().ptr();
         cl_command_queue queue = (cl_command_queue)Queue::getDefault().ptr();
@@ -4740,7 +4755,7 @@ bool Image2D::canCreateAlias(const UMat &m)
 {
     bool ret = false;
     const Device & d = ocl::Device::getDefault();
-    if (d.imageFromBufferSupport())
+    if (d.imageFromBufferSupport() && !m.empty())
     {
         // This is the required pitch alignment in pixels
         uint pitchAlign = d.imagePitchAlignment();
