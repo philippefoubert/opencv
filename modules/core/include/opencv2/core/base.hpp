@@ -225,7 +225,7 @@ enum {
     CV_DO_PRAGMA(warning(push)) \
     CV_DO_PRAGMA(warning(disable: 4996))
 #define CV_SUPPRESS_DEPRECATED_END CV_DO_PRAGMA(warning(pop))
-#elif defined __GNUC__
+#elif defined (__clang__) || ((__GNUC__)  && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ > 5))))
 #define CV_SUPPRESS_DEPRECATED_START \
     CV_DO_PRAGMA(GCC diagnostic push) \
     CV_DO_PRAGMA(GCC diagnostic ignored "-Wdeprecated-declarations")
@@ -603,6 +603,48 @@ inline uint32x4_t cv_vrndq_u32_f32(float32x4_t v)
 {
     static float32x4_t v_05 = vdupq_n_f32(0.5f);
     return vcvtq_u32_f32(vaddq_f32(v, v_05));
+}
+
+inline float32x4_t cv_vrecpq_f32(float32x4_t val)
+{
+    float32x4_t reciprocal = vrecpeq_f32(val);
+    reciprocal = vmulq_f32(vrecpsq_f32(val, reciprocal), reciprocal);
+    reciprocal = vmulq_f32(vrecpsq_f32(val, reciprocal), reciprocal);
+    return reciprocal;
+}
+
+inline float32x2_t cv_vrecp_f32(float32x2_t val)
+{
+    float32x2_t reciprocal = vrecpe_f32(val);
+    reciprocal = vmul_f32(vrecps_f32(val, reciprocal), reciprocal);
+    reciprocal = vmul_f32(vrecps_f32(val, reciprocal), reciprocal);
+    return reciprocal;
+}
+
+inline float32x4_t cv_vrsqrtq_f32(float32x4_t val)
+{
+    float32x4_t e = vrsqrteq_f32(val);
+    e = vmulq_f32(vrsqrtsq_f32(vmulq_f32(e, e), val), e);
+    e = vmulq_f32(vrsqrtsq_f32(vmulq_f32(e, e), val), e);
+    return e;
+}
+
+inline float32x2_t cv_vrsqrt_f32(float32x2_t val)
+{
+    float32x2_t e = vrsqrte_f32(val);
+    e = vmul_f32(vrsqrts_f32(vmul_f32(e, e), val), e);
+    e = vmul_f32(vrsqrts_f32(vmul_f32(e, e), val), e);
+    return e;
+}
+
+inline float32x4_t cv_vsqrtq_f32(float32x4_t val)
+{
+    return cv_vrecpq_f32(cv_vrsqrtq_f32(val));
+}
+
+inline float32x2_t cv_vsqrt_f32(float32x2_t val)
+{
+    return cv_vrecp_f32(cv_vrsqrt_f32(val));
 }
 
 #endif
