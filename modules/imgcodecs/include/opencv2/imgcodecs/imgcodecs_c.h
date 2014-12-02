@@ -48,6 +48,10 @@
 extern "C" {
 #endif /* __cplusplus */
 
+/** @addtogroup imgcodecs_c
+  @{
+  */
+
 enum
 {
 /* 8bit, color or not */
@@ -123,6 +127,8 @@ CVAPI(int) cvHaveImageWriter(const char* filename);
 #define cvvLoadImage(name) cvLoadImage((name),1)
 #define cvvSaveImage cvSaveImage
 #define cvvConvertImage cvConvertImage
+
+/** @} imgcodecs_c */
 
 #ifdef __cplusplus
 }
