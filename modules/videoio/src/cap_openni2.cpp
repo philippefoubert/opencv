@@ -92,7 +92,7 @@ public:
     CvCapture_OpenNI2(const char * filename);
     virtual ~CvCapture_OpenNI2();
 
-    virtual double getProperty(int propIdx);
+    virtual double getProperty(int propIdx) const;
     virtual bool setProperty(int probIdx, double propVal);
     virtual bool grabFrame();
     virtual IplImage* retrieveFrame(int outputType);
@@ -395,7 +395,7 @@ bool CvCapture_OpenNI2::readCamerasParams()
     return true;
 }
 
-double CvCapture_OpenNI2::getProperty( int propIdx )
+double CvCapture_OpenNI2::getProperty( int propIdx ) const
 {
     double propValue = 0;
 
@@ -821,10 +821,10 @@ IplImage* CvCapture_OpenNI2::retrieveValidDepthMask()
     if (!depthFrame.isValid())
         return 0;
 
-    cv::Mat depth;
-    getDepthMapFromMetaData(depthFrame, depth, noSampleValue, shadowValue);
+    cv::Mat d;
+    getDepthMapFromMetaData(depthFrame, d, noSampleValue, shadowValue);
 
-    outputMaps[CV_CAP_OPENNI_VALID_DEPTH_MASK].mat = depth != CvCapture_OpenNI2::INVALID_PIXEL_VAL;
+    outputMaps[CV_CAP_OPENNI_VALID_DEPTH_MASK].mat = d != CvCapture_OpenNI2::INVALID_PIXEL_VAL;
 
     return outputMaps[CV_CAP_OPENNI_VALID_DEPTH_MASK].getIplImagePtr();
 }
