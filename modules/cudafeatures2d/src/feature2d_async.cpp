@@ -40,33 +40,46 @@
 //
 //M*/
 
-#ifndef __OPENCV_CUDALEGACY_HPP__
-#define __OPENCV_CUDALEGACY_HPP__
+#include "precomp.hpp"
 
-#include "opencv2/core/cuda.hpp"
-#include "opencv2/cudalegacy/NCV.hpp"
-#include "opencv2/cudalegacy/NPP_staging.hpp"
-#include "opencv2/cudalegacy/NCVPyramid.hpp"
-#include "opencv2/cudalegacy/NCVHaarObjectDetection.hpp"
-#include "opencv2/cudalegacy/NCVBroxOpticalFlow.hpp"
-
-/**
-  @addtogroup cuda
-  @{
-    @defgroup cudalegacy Legacy support
-  @}
-*/
-
-namespace cv { namespace cuda {
-
-class CV_EXPORTS ImagePyramid : public Algorithm
+cv::cuda::Feature2DAsync::~Feature2DAsync()
 {
-public:
-    virtual void getLayer(OutputArray outImg, Size outRoi, Stream& stream = Stream::Null()) const = 0;
-};
+}
 
-CV_EXPORTS Ptr<ImagePyramid> createImagePyramid(InputArray img, int nLayers = -1, Stream& stream = Stream::Null());
+void cv::cuda::Feature2DAsync::detectAsync(InputArray image,
+                                           OutputArray keypoints,
+                                           InputArray mask,
+                                           Stream& stream)
+{
+    if (image.empty())
+    {
+        keypoints.clear();
+        return;
+    }
 
-}}
+    detectAndComputeAsync(image, mask, keypoints, noArray(), false, stream);
+}
 
-#endif /* __OPENCV_CUDALEGACY_HPP__ */
+void cv::cuda::Feature2DAsync::computeAsync(InputArray image,
+                                            OutputArray keypoints,
+                                            OutputArray descriptors,
+                                            Stream& stream)
+{
+    if (image.empty())
+    {
+        descriptors.release();
+        return;
+    }
+
+    detectAndComputeAsync(image, noArray(), keypoints, descriptors, true, stream);
+}
+
+void cv::cuda::Feature2DAsync::detectAndComputeAsync(InputArray /*image*/,
+                                                     InputArray /*mask*/,
+                                                     OutputArray /*keypoints*/,
+                                                     OutputArray /*descriptors*/,
+                                                     bool /*useProvidedKeypoints*/,
+                                                     Stream& /*stream*/)
+{
+    CV_Error(Error::StsNotImplemented, "");
+}
