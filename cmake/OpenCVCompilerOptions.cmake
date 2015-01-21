@@ -131,10 +131,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   if(ENABLE_SSE2)
     add_extra_compiler_option(-msse2)
   endif()
-  if (ENABLE_NEON)
+  if(ENABLE_NEON)
     add_extra_compiler_option("-mfpu=neon")
   endif()
-  if (ENABLE_VFPV3 AND NOT ENABLE_NEON)
+  if(ENABLE_VFPV3 AND NOT ENABLE_NEON)
     add_extra_compiler_option("-mfpu=vfpv3")
   endif()
 
@@ -142,6 +142,13 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   if(NOT MINGW)
     if(ENABLE_AVX)
       add_extra_compiler_option(-mavx)
+    endif()
+    if(ENABLE_AVX2)
+      add_extra_compiler_option(-mavx2)
+
+      if(ENABLE_FMA3)
+        add_extra_compiler_option(-mfma)
+      endif()
     endif()
 
     # GCC depresses SSEx instructions when -mavx is used. Instead, it generates new AVX instructions or AVX equivalence for all SSEx instructions when needed.
@@ -160,6 +167,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 
       if(ENABLE_SSE42)
         add_extra_compiler_option(-msse4.2)
+      endif()
+
+      if(ENABLE_POPCNT)
+        add_extra_compiler_option(-mpopcnt)
       endif()
     endif()
   endif(NOT MINGW)
@@ -217,7 +228,10 @@ if(MSVC)
     set(OPENCV_EXTRA_FLAGS_RELEASE "${OPENCV_EXTRA_FLAGS_RELEASE} /Zi")
   endif()
 
-  if(ENABLE_AVX AND NOT MSVC_VERSION LESS 1600)
+  if(ENABLE_AVX2 AND NOT MSVC_VERSION LESS 1800)
+    set(OPENCV_EXTRA_FLAGS "${OPENCV_EXTRA_FLAGS} /arch:AVX2")
+  endif()
+  if(ENABLE_AVX AND NOT MSVC_VERSION LESS 1600 AND NOT OPENCV_EXTRA_FLAGS MATCHES "/arch:")
     set(OPENCV_EXTRA_FLAGS "${OPENCV_EXTRA_FLAGS} /arch:AVX")
   endif()
 
@@ -239,7 +253,7 @@ if(MSVC)
     endif()
   endif()
 
-  if(ENABLE_SSE OR ENABLE_SSE2 OR ENABLE_SSE3 OR ENABLE_SSE4_1 OR ENABLE_AVX)
+  if(ENABLE_SSE OR ENABLE_SSE2 OR ENABLE_SSE3 OR ENABLE_SSE4_1 OR ENABLE_AVX OR ENABLE_AVX2)
     set(OPENCV_EXTRA_FLAGS "${OPENCV_EXTRA_FLAGS} /Oi")
   endif()
 
@@ -311,6 +325,7 @@ if(MSVC)
   endforeach()
 
   if(NOT ENABLE_NOISY_WARNINGS)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251") #class 'std::XXX' needs to have dll-interface to be used by clients of YYY
+    ocv_warnings_disable(CMAKE_CXX_FLAGS /wd4251) # class 'std::XXX' needs to have dll-interface to be used by clients of YYY
+    ocv_warnings_disable(CMAKE_CXX_FLAGS /wd4324) # 'struct_name' : structure was padded due to __declspec(align())
   endif()
 endif()
