@@ -350,7 +350,7 @@ int CV_UndistortPointsTest::prepare_test_case(int test_case_idx)
     rotation.at<double>(0) = CV_PI*(cvtest::randReal(rng) - (double)0.5); // phi
     rotation.at<double>(1) = CV_PI*(cvtest::randReal(rng) - (double)0.5); // ksi
     rotation.at<double>(2) = CV_PI*(cvtest::randReal(rng) - (double)0.5); //khi
-    cvtest::Rodrigues(rotation, _rot);
+    cv::Rodrigues(rotation, _rot);
 
     //copying data
     //src_points = &_points;
@@ -759,7 +759,7 @@ int CV_InitUndistortRectifyMapTest::prepare_test_case(int test_case_idx)
     rotation.at<double>(0) = CV_PI/8*(cvtest::randReal(rng) - (double)0.5); // phi
     rotation.at<double>(1) = CV_PI/8*(cvtest::randReal(rng) - (double)0.5); // ksi
     rotation.at<double>(2) = CV_PI/3*(cvtest::randReal(rng) - (double)0.5); //khi
-    cvtest::Rodrigues(rotation, _rot);
+    cv::Rodrigues(rotation, _rot);
 
     //cvSetIdentity(_rot);
     //copying data

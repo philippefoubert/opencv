@@ -347,15 +347,16 @@ int cvTsRodrigues( const CvMat* src, CvMat* dst, CvMat* jacobian )
     return 1;
 }
 
-
-void cvtest::Rodrigues(const Mat& src, Mat& dst, Mat* jac)
+namespace cvtest
 {
-    CvMat _src = src, _dst = dst, _jac;
-    if( jac )
-        _jac = *jac;
-    cvTsRodrigues(&_src, &_dst, jac ? &_jac : 0);
+    void Rodrigues(const Mat& src, Mat& dst, Mat* jac)
+    {
+        CvMat _src = src, _dst = dst, _jac;
+        if( jac )
+            _jac = *jac;
+        cvTsRodrigues(&_src, &_dst, jac ? &_jac : 0);
+    }
 }
-
 
 static void test_convertHomogeneous( const Mat& _src, Mat& _dst )
 {
@@ -930,7 +931,7 @@ void CV_FundamentalMatTest::fill_array( int test_case_idx, int i, int j, Mat& ar
         r[1] = cvtest::randReal(rng)*CV_PI*2;
         r[2] = cvtest::randReal(rng)*CV_PI*2;
 
-        cvtest::Rodrigues( rot_vec, rot_mat );
+        cv::Rodrigues( rot_vec, rot_mat );
         t[3] = cvtest::randReal(rng)*cube_size;
         t[7] = cvtest::randReal(rng)*cube_size;
         t[11] = cvtest::randReal(rng)*cube_size;
@@ -1244,7 +1245,7 @@ void CV_EssentialMatTest::fill_array( int test_case_idx, int i, int j, Mat& arr 
         r[1] = cvtest::randReal(rng)*CV_PI*2;
         r[2] = cvtest::randReal(rng)*CV_PI*2;
 
-        cvtest::Rodrigues( rot_vec, rot_mat );
+        cv::Rodrigues( rot_vec, rot_mat );
         t[3] = cvtest::randReal(rng)*cube_size;
         t[7] = cvtest::randReal(rng)*cube_size;
         t[11] = cvtest::randReal(rng)*cube_size;
