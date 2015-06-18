@@ -795,8 +795,12 @@ macro(ocv_get_all_libs _modules _extra _3rdparty)
   set(${_extra} "")
   set(${_3rdparty} "")
   foreach(m ${OPENCV_MODULES_PUBLIC})
-    get_target_property(deps ${m} INTERFACE_LINK_LIBRARIES)
-    if(NOT deps)
+    if(TARGET ${m})
+      get_target_property(deps ${m} INTERFACE_LINK_LIBRARIES)
+      if(NOT deps)
+        set(deps "")
+      endif()
+    else()
       set(deps "")
     endif()
     list(INSERT ${_modules} 0 ${deps} ${m})
@@ -824,7 +828,7 @@ macro(ocv_get_all_libs _modules _extra _3rdparty)
   endif()
 
   # split 3rdparty libs and modules
-  list(REMOVE_ITEM ${_modules} ${${_3rdparty}} ${${_extra}})
+  list(REMOVE_ITEM ${_modules} ${${_3rdparty}} ${${_extra}} non_empty_list)
 
   # convert CMake lists to makefile literals
   foreach(lst ${_modules} ${_3rdparty} ${_extra})
