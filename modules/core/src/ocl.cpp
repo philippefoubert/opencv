@@ -47,9 +47,14 @@
 #include <iostream> // std::cerr
 
 #define CV_OPENCL_ALWAYS_SHOW_BUILD_LOG 0
-#define CV_OPENCL_SHOW_RUN_ERRORS       0
-#define CV_OPENCL_SHOW_SVM_ERROR_LOG    1
-#define CV_OPENCL_SHOW_SVM_LOG          0
+#ifdef DEBUG
+    #define CV_OPENCL_SHOW_RUN_ERRORS    1
+    #define CV_OPENCL_SHOW_SVM_ERROR_LOG 1
+#else  //DEBUG
+    #define CV_OPENCL_SHOW_RUN_ERRORS    0
+    #define CV_OPENCL_SHOW_SVM_ERROR_LOG 0
+#endif //DEBUG
+#define CV_OPENCL_SHOW_SVM_LOG           0
 
 #include "opencv2/core/bufferpool.hpp"
 #ifndef LOG_BUFFER_POOL
@@ -3169,6 +3174,16 @@ struct Kernel::Impl
         handle = ph != 0 ?
             clCreateKernel(ph, kname, &retval) : 0;
         CV_OclDbgAssert(retval == CL_SUCCESS);
+#if CV_OPENCL_SHOW_RUN_ERRORS
+        {
+            kernel_details = cv::format("kname  =\"%s\"\n"
+                                        "handle =\"%lld\"\n"
+                                        "details=\"%s\"",
+                                        kname,
+                                        (long long int)handle,
+                                        prog.getPrefix().c_str());
+        }
+#endif
         for( int i = 0; i < MAX_ARRS; i++ )
             u[i] = 0;
         haveTempDstUMats = false;
@@ -3225,6 +3240,10 @@ struct Kernel::Impl
     int nu;
     std::list<Image2D> images;
     bool haveTempDstUMats;
+
+#if CV_OPENCL_SHOW_RUN_ERRORS
+    cv::String kernel_details;
+#endif //CV_OPENCL_SHOW_RUN_ERRORS
 };
 
 }} // namespace cv::ocl
@@ -3463,7 +3482,7 @@ bool Kernel::run(int dims, size_t _globalsize[], size_t _localsize[],
 #if CV_OPENCL_SHOW_RUN_ERRORS
     if (retval != CL_SUCCESS)
     {
-        printf("OpenCL program returns error: %d\n", retval);
+        printf("OpenCL program returns error: %d\n%s\n\n", retval, p->kernel_details.c_str());
         fflush(stdout);
     }
 #endif
