@@ -285,13 +285,24 @@ void Mat::copyTo( OutputArray _dst ) const
 
         if( rows > 0 && cols > 0 )
         {
+            // For some cases (with vector) dst.size != src.size, so force to column-based form
+            // It prevents memory corruption in case of column-based src
+            if (_dst.isVector())
+                dst = dst.reshape(0, (int)dst.total());
+
             const uchar* sptr = data;
             uchar* dptr = dst.data;
 
+            CV_IPP_RUN(
+                    (size_t)cols*elemSize() <= (size_t)INT_MAX &&
+                    (size_t)step <= (size_t)INT_MAX &&
+                    (size_t)dst.step <= (size_t)INT_MAX
+                    ,
+                    ippiCopy_8u_C1R(sptr, (int)step, dptr, (int)dst.step, ippiSize((int)(cols*elemSize()), rows)) >= 0
+            )
+
             Size sz = getContinuousSize(*this, dst);
             size_t len = sz.width*elemSize();
-
-            CV_IPP_RUN(true, ippiCopy_8u_C1R(sptr, (int)step, dptr, (int)dst.step, ippiSize((int)len, sz.height)) >= 0)
 
             for( ; sz.height--; sptr += step, dptr += dst.step )
                 memcpy( dptr, sptr, len );

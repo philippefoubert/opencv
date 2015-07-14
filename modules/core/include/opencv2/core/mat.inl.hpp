@@ -130,6 +130,7 @@ inline bool _InputArray::isUMat() const  { return kind() == _InputArray::UMAT; }
 inline bool _InputArray::isMatVector() const { return kind() == _InputArray::STD_VECTOR_MAT; }
 inline bool _InputArray::isUMatVector() const  { return kind() == _InputArray::STD_VECTOR_UMAT; }
 inline bool _InputArray::isMatx() const { return kind() == _InputArray::MATX; }
+inline bool _InputArray::isVector() const { return kind() == _InputArray::STD_VECTOR || kind() == _InputArray::STD_BOOL_VECTOR; }
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -396,6 +397,8 @@ Mat::Mat(int _rows, int _cols, int _type, void* _data, size_t _step)
       data((uchar*)_data), datastart((uchar*)_data), dataend(0), datalimit(0),
       allocator(0), u(0), size(&rows)
 {
+    CV_Assert(total() == 0 || data != NULL);
+
     size_t esz = CV_ELEM_SIZE(_type), esz1 = CV_ELEM_SIZE1(_type);
     size_t minstep = cols * esz;
     if( _step == AUTO_STEP )
@@ -427,6 +430,8 @@ Mat::Mat(Size _sz, int _type, void* _data, size_t _step)
       data((uchar*)_data), datastart((uchar*)_data), dataend(0), datalimit(0),
       allocator(0), u(0), size(&rows)
 {
+    CV_Assert(total() == 0 || data != NULL);
+
     size_t esz = CV_ELEM_SIZE(_type), esz1 = CV_ELEM_SIZE1(_type);
     size_t minstep = cols*esz;
     if( _step == AUTO_STEP )
