@@ -4774,8 +4774,16 @@ public:
 #ifdef HAVE_OPENCL_SVM
             CV_DbgAssert((u->allocatorFlags_ & svm::OPENCL_SVM_BUFFER_MASK) == 0);
 #endif
-            CV_Assert( clEnqueueReadBuffer(q, (cl_mem)u->handle, CL_TRUE, 0,
-                                           u->size, alignedPtr.getAlignedPtr(), 0, 0, 0) == CL_SUCCESS );
+            cl_int retval = clEnqueueReadBuffer(q, (cl_mem)u->handle, CL_TRUE, 0,
+                                                u->size, alignedPtr.getAlignedPtr(), 0, 0, 0);
+#if CV_OPENCL_SHOW_RUN_ERRORS
+            if (retval != CL_SUCCESS)
+            {
+                printf("clEnqueueReadBuffer returned error: %d\n", retval);
+                fflush(stdout);
+            }
+#endif
+            CV_DbgAssert(CL_SUCCESS == retval);
             u->markHostCopyObsolete(false);
         }
     }
@@ -5010,8 +5018,16 @@ public:
             if( iscontinuous )
             {
                 AlignedDataPtr<false, true> alignedPtr((uchar*)dstptr, total, CV_OPENCL_DATA_PTR_ALIGNMENT);
-                CV_Assert(clEnqueueReadBuffer(q, (cl_mem)u->handle, CL_TRUE,
-                    srcrawofs, total, alignedPtr.getAlignedPtr(), 0, 0, 0) >= 0 );
+                cl_int retval = clEnqueueReadBuffer(q, (cl_mem)u->handle, CL_TRUE,
+                                                    srcrawofs, total, alignedPtr.getAlignedPtr(), 0, 0, 0);
+#if CV_OPENCL_SHOW_RUN_ERRORS
+                if (retval != CL_SUCCESS)
+                {
+                    printf("clEnqueueReadBuffer returned error: %d\n", retval);
+                    fflush(stdout);
+                }
+#endif
+                CV_DbgAssert(retval >= 0);
             }
             else
             {
