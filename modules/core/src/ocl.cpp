@@ -3173,7 +3173,6 @@ struct Kernel::Impl
         cl_int retval = 0;
         handle = ph != 0 ?
             clCreateKernel(ph, kname, &retval) : 0;
-        CV_OclDbgAssert(retval == CL_SUCCESS);
 #if CV_OPENCL_SHOW_RUN_ERRORS
         {
             kernel_details = cv::format("kname  =\"%s\"\n"
@@ -3182,8 +3181,15 @@ struct Kernel::Impl
                                         kname,
                                         (long long int)handle,
                                         prog.getPrefix().c_str());
+            if (retval != CL_SUCCESS)
+            {
+                printf("clCreateKernel returns error: %d\n%s\n\n", retval, kernel_details.c_str());
+                fflush(stdout);
+            }
         }
 #endif
+        CV_OclDbgAssert(retval == CL_SUCCESS);
+
         for( int i = 0; i < MAX_ARRS; i++ )
             u[i] = 0;
         haveTempDstUMats = false;
