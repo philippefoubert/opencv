@@ -3619,6 +3619,11 @@ struct Program::Impl
                         // TODO It is useful to see kernel name & program file name also
                         errmsg = String(buf);
                         printf("OpenCL program build log: %s\n%s\n", buildflags.c_str(), errmsg.c_str());
+#if CV_OPENCL_SHOW_RUN_ERRORS
+                      //printf("Kernel: \"%s\"\n", _src.source().c_str());
+                        printf("clBuildProgram returns error: %d\n", retval);
+                        printf("################################\n");
+#endif //CV_OPENCL_SHOW_RUN_ERRORS
                         fflush(stdout);
                     }
                 }
