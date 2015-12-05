@@ -3183,7 +3183,7 @@ struct Kernel::Impl
                                         prog.getPrefix().c_str());
             if (retval != CL_SUCCESS)
             {
-                printf("clCreateKernel returns error: %d\n%s\n\n", retval, kernel_details.c_str());
+                printf("OpenCL - clCreateKernel returned error: %d\n%s\n\n", retval, kernel_details.c_str());
                 fflush(stdout);
             }
         }
@@ -3488,13 +3488,21 @@ bool Kernel::run(int dims, size_t _globalsize[], size_t _localsize[],
 #if CV_OPENCL_SHOW_RUN_ERRORS
     if (retval != CL_SUCCESS)
     {
-        printf("OpenCL program returns error: %d\n%s\n\n", retval, p->kernel_details.c_str());
+        printf("OpenCL - clEnqueueNDRangeKernel returned error: %d\n%s\n\n", retval, p->kernel_details.c_str());
         fflush(stdout);
     }
 #endif
     if( sync || retval != CL_SUCCESS )
     {
-        CV_OclDbgAssert(clFinish(qq) == CL_SUCCESS);
+        retval = clFinish(qq);
+#if CV_OPENCL_SHOW_RUN_ERRORS
+        if (retval != CL_SUCCESS)
+        {
+            printf("OpenCL - clFinish returned error: %d\n%s\n\n", retval, p->kernel_details.c_str());
+            fflush(stdout);
+        }
+#endif
+        CV_OclDbgAssert(CL_SUCCESS == retval);
         p->cleanupUMats();
     }
     else
@@ -3621,7 +3629,7 @@ struct Program::Impl
                         printf("OpenCL program build log: %s\n%s\n", buildflags.c_str(), errmsg.c_str());
 #if CV_OPENCL_SHOW_RUN_ERRORS
                       //printf("Kernel: \"%s\"\n", _src.source().c_str());
-                        printf("clBuildProgram returns error: %d\n", retval);
+                        printf("OpenCL - clBuildProgram returned error: %d\n", retval);
                         printf("################################\n");
 #endif //CV_OPENCL_SHOW_RUN_ERRORS
                         fflush(stdout);
@@ -4793,7 +4801,7 @@ public:
 #if CV_OPENCL_SHOW_RUN_ERRORS
             if (retval != CL_SUCCESS)
             {
-                printf("clEnqueueReadBuffer returned error: %d\n", retval);
+                printf("OpenCL - clEnqueueReadBuffer returned error: %d\n", retval);
                 fflush(stdout);
             }
 #endif
@@ -5040,7 +5048,7 @@ public:
 #if CV_OPENCL_SHOW_RUN_ERRORS
                 if (retval != CL_SUCCESS)
                 {
-                    printf("clEnqueueReadBuffer returned error: %d\n", retval);
+                    printf("OpenCL - clEnqueueReadBuffer returned error: %d\n", retval);
                     fflush(stdout);
                 }
 #endif
