@@ -587,6 +587,11 @@ include(cmake/OpenCVFindMatlab.cmake)
 
 include(cmake/OpenCVDetectVTK.cmake)
 
+if (OPENCV_HAL_HEADERS AND OPENCV_HAL_LIBS)
+  get_filename_component(OPENCV_HAL_HEADERS "${OPENCV_HAL_HEADERS}" ABSOLUTE)
+  get_filename_component(OPENCV_HAL_LIBS "${OPENCV_HAL_LIBS}" ABSOLUTE)
+endif()
+
 # ----------------------------------------------------------------------------
 # Add CUDA libraries (needed for apps/tools, samples)
 # ----------------------------------------------------------------------------
@@ -598,6 +603,9 @@ if(HAVE_CUDA)
   if(HAVE_CUFFT)
     set(OPENCV_LINKER_LIBS ${OPENCV_LINKER_LIBS} ${CUDA_cufft_LIBRARY})
   endif()
+  foreach(p ${CUDA_LIBS_PATH})
+    set(OPENCV_LINKER_LIBS ${OPENCV_LINKER_LIBS} -L${p})
+  endforeach()
 endif()
 # ----------------------------------------------------------------------------
 # Solution folders:
