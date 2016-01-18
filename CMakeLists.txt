@@ -98,6 +98,8 @@ endif()
 
 include(cmake/OpenCVUtils.cmake)
 
+ocv_cmake_eval(DEBUG_PRE ONCE)
+
 ocv_clear_vars(OpenCVModules_TARGETS)
 
 # ----------------------------------------------------------------------------
@@ -253,7 +255,7 @@ OCV_OPTION(INSTALL_TESTS            "Install accuracy and performance test binar
 
 # OpenCV build options
 # ===================================================
-OCV_OPTION(ENABLE_PRECOMPILED_HEADERS "Use precompiled headers"                                  ON   IF (NOT IOS) )
+OCV_OPTION(ENABLE_PRECOMPILED_HEADERS "Use precompiled headers"                                  ON IF (NOT IOS AND NOT CMAKE_CROSSCOMPILING) )
 OCV_OPTION(ENABLE_SOLUTION_FOLDERS    "Solution folder in Visual Studio or in other IDEs"        (MSVC_IDE OR CMAKE_GENERATOR MATCHES Xcode) )
 OCV_OPTION(ENABLE_PROFILING           "Enable profiling in the GCC compiler (Add flags: -g -pg)" OFF  IF CMAKE_COMPILER_IS_GNUCXX )
 OCV_OPTION(ENABLE_COVERAGE            "Enable coverage collection with  GCov"                    OFF  IF CMAKE_COMPILER_IS_GNUCXX )
@@ -1138,14 +1140,13 @@ endif()
 
 if(HAVE_OPENCL)
   status("")
-  status("  OpenCL:")
   if(HAVE_OPENCL_STATIC)
-    set(__opencl_ver "static")
+    set(__opencl_type "<Link with OpenCL library>")
   else()
-    set(__opencl_ver "dynamic")
+    set(__opencl_type "<Dynamic loading of OpenCL library>")
   endif()
-  status("    Version:"       ${__opencl_ver})
-  if(OPENCL_INCLUDE_DIR)
+  status("  OpenCL:"                 ${__opencl_type})
+  if(OPENCL_INCLUDE_DIRS)
     status("    Include path:"       ${OPENCL_INCLUDE_DIRS})
   endif()
   if(OPENCL_LIBRARIES)
@@ -1162,7 +1163,7 @@ if(HAVE_OPENCL)
         list(APPEND __libs "${l}")
       endif()
     endforeach()
-    status("    libraries:"          ${__libs})
+    status("    Link libraries:"          ${__libs})
   endif()
   status("    Use AMDFFT:"           HAVE_CLAMDFFT  THEN YES ELSE NO)
   status("    Use AMDBLAS:"          HAVE_CLAMDBLAS THEN YES ELSE NO)
@@ -1255,3 +1256,7 @@ endif()
 # ----------------------------------------------------------------------------
 
 include(cmake/OpenCVPackaging.cmake)
+
+# This should be the last command
+ocv_cmake_dump_vars("" TOFILE "CMakeVars.txt")
+ocv_cmake_eval(DEBUG_POST ONCE)
