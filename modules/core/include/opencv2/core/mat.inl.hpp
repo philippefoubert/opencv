@@ -680,7 +680,8 @@ void Mat::addref()
         CV_XADD(&u->refcount, 1);
 }
 
-inline void Mat::release()
+inline
+void Mat::release()
 {
     if( u && CV_XADD(&u->refcount, -1) == 1 )
 #ifdef CV_PERFORMANCE_ANALYSIS
