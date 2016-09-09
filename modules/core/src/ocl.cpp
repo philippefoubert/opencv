@@ -45,6 +45,7 @@
 #include <string>
 #include <sstream>
 #include <iostream> // std::cerr
+#include <inttypes.h>
 
 #define CV_OPENCL_ALWAYS_SHOW_BUILD_LOG 0
 #ifdef DEBUG
@@ -3174,6 +3175,9 @@ struct Kernel::Impl
     {
         cl_program ph = (cl_program)prog.ptr();
         cl_int retval = 0;
+#ifdef ENABLE_INSTRUMENTATION
+        name = kname;
+#endif
         handle = ph != 0 ?
             clCreateKernel(ph, kname, &retval) : 0;
 #if CV_OPENCL_SHOW_RUN_ERRORS
@@ -3242,6 +3246,9 @@ struct Kernel::Impl
 
     IMPLEMENT_REFCOUNTABLE();
 
+#ifdef ENABLE_INSTRUMENTATION
+    cv::String name;
+#endif
     cl_kernel handle;
     cl_event e;
     enum { MAX_ARRS = 16 };
@@ -3466,6 +3473,8 @@ int Kernel::set(int i, const KernelArg& arg)
 bool Kernel::run(int dims, size_t _globalsize[], size_t _localsize[],
                  bool sync, const Queue& q)
 {
+    CV_INSTRUMENT_REGION_META(p->name.c_str(), instr::TYPE_FUN, instr::IMPL_OPENCL);
+
     if(!p || !p->handle || p->e != 0)
         return false;
 
@@ -3585,6 +3594,7 @@ struct Program::Impl
     Impl(const ProgramSource& _src,
          const String& _buildflags, String& errmsg)
     {
+        CV_INSTRUMENT_REGION_OPENCL_(cv::format("Compile: %" PRIx64 " options: %s", _src.hash(), _buildflags.c_str()).c_str());
         refcount = 1;
         const Context& ctx = Context::getDefault();
         src = _src;
