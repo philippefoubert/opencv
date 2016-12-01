@@ -696,6 +696,11 @@ protected:
 
 #endif // IVX_USE_EXTERNAL_REFCOUNT
 
+#ifndef VX_VERSION_1_1
+//TODO: provide wrapper for border mode
+typedef vx_border_mode_t vx_border_t;
+#endif
+
 /// vx_context wrapper
 class Context : public RefWrapper<vx_context>
 {
@@ -719,6 +724,146 @@ public:
     /// vxLoadKernels() wrapper
     void loadKernels(const std::string& module)
     { IVX_CHECK_STATUS( vxLoadKernels(ref, module.c_str()) ); }
+
+    /// vxQueryContext() wrapper
+    template<typename T>
+    void query(vx_enum att, T& value) const
+    { IVX_CHECK_STATUS(vxQueryContext(ref, att, &value, sizeof(value))); }
+
+#ifndef VX_VERSION_1_1
+    static const vx_enum
+        VX_CONTEXT_VENDOR_ID = VX_CONTEXT_ATTRIBUTE_VENDOR_ID,
+        VX_CONTEXT_VERSION = VX_CONTEXT_ATTRIBUTE_VERSION,
+        VX_CONTEXT_UNIQUE_KERNELS = VX_CONTEXT_ATTRIBUTE_UNIQUE_KERNELS,
+        VX_CONTEXT_MODULES = VX_CONTEXT_ATTRIBUTE_MODULES,
+        VX_CONTEXT_REFERENCES = VX_CONTEXT_ATTRIBUTE_REFERENCES,
+        VX_CONTEXT_IMPLEMENTATION = VX_CONTEXT_ATTRIBUTE_IMPLEMENTATION,
+        VX_CONTEXT_EXTENSIONS_SIZE = VX_CONTEXT_ATTRIBUTE_EXTENSIONS_SIZE,
+        VX_CONTEXT_EXTENSIONS = VX_CONTEXT_ATTRIBUTE_EXTENSIONS,
+        VX_CONTEXT_CONVOLUTION_MAX_DIMENSION = VX_CONTEXT_ATTRIBUTE_CONVOLUTION_MAXIMUM_DIMENSION,
+        VX_CONTEXT_OPTICAL_FLOW_MAX_WINDOW_DIMENSION = VX_CONTEXT_ATTRIBUTE_OPTICAL_FLOW_WINDOW_MAXIMUM_DIMENSION,
+        VX_CONTEXT_IMMEDIATE_BORDER = VX_CONTEXT_ATTRIBUTE_IMMEDIATE_BORDER_MODE,
+        VX_CONTEXT_UNIQUE_KERNEL_TABLE = VX_CONTEXT_ATTRIBUTE_UNIQUE_KERNEL_TABLE;
+#endif
+
+    /// vxQueryContext(VX_CONTEXT_VENDOR_ID) wrapper
+    vx_uint16 vendorID() const
+    {
+        vx_uint16 v;
+        query(VX_CONTEXT_VENDOR_ID, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_VERSION) wrapper
+    vx_uint16 version() const
+    {
+        vx_uint16 v;
+        query(VX_CONTEXT_VERSION, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_UNIQUE_KERNELS) wrapper
+    vx_uint32 uniqueKernels() const
+    {
+        vx_uint32 v;
+        query(VX_CONTEXT_UNIQUE_KERNELS, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_MODULES) wrapper
+    vx_uint32 modules() const
+    {
+        vx_uint32 v;
+        query(VX_CONTEXT_MODULES, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_REFERENCES) wrapper
+    vx_uint32 references() const
+    {
+        vx_uint32 v;
+        query(VX_CONTEXT_REFERENCES, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_EXTENSIONS_SIZE) wrapper
+    vx_size extensionsSize() const
+    {
+        vx_size v;
+        query(VX_CONTEXT_EXTENSIONS_SIZE, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_CONVOLUTION_MAX_DIMENSION) wrapper
+    vx_size convolutionMaxDimension() const
+    {
+        vx_size v;
+        query(VX_CONTEXT_CONVOLUTION_MAX_DIMENSION, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_OPTICAL_FLOW_MAX_WINDOW_DIMENSION) wrapper
+    vx_size opticalFlowMaxWindowSize() const
+    {
+        vx_size v;
+        query(VX_CONTEXT_OPTICAL_FLOW_MAX_WINDOW_DIMENSION, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_IMMEDIATE_BORDER) wrapper
+    vx_border_t borderMode() const
+    {
+        vx_border_t v;
+        query(VX_CONTEXT_IMMEDIATE_BORDER, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_IMPLEMENTATION) wrapper
+    std::string implementation() const
+    {
+        std::vector<vx_char> v(VX_MAX_IMPLEMENTATION_NAME);
+        IVX_CHECK_STATUS(vxQueryContext(ref, VX_CONTEXT_IMPLEMENTATION, &v[0], v.size() * sizeof(vx_char)));
+        return std::string(v.data());
+    }
+
+    /// vxQueryContext(VX_CONTEXT_EXTENSIONS) wrapper
+    std::string extensions() const
+    {
+        std::vector<vx_char> v(extensionsSize());
+        IVX_CHECK_STATUS(vxQueryContext(ref, VX_CONTEXT_EXTENSIONS, &v[0], v.size() * sizeof(vx_char)));
+        return std::string(v.data());
+    }
+
+    /// vxQueryContext(VX_CONTEXT_UNIQUE_KERNEL_TABLE) wrapper
+    std::vector<vx_kernel_info_t> kernelTable() const
+    {
+        std::vector<vx_kernel_info_t> v(uniqueKernels());
+        IVX_CHECK_STATUS(vxQueryContext(ref, VX_CONTEXT_UNIQUE_KERNEL_TABLE, &v[0], v.size() * sizeof(vx_kernel_info_t)));
+        return v;
+    }
+
+#ifdef VX_VERSION_1_1
+    /// vxQueryContext(VX_CONTEXT_IMMEDIATE_BORDER_POLICY) wrapper
+    vx_enum borderPolicy() const
+    {
+        vx_enum v;
+        query(VX_CONTEXT_IMMEDIATE_BORDER_POLICY, v);
+        return v;
+    }
+
+    /// vxQueryContext(VX_CONTEXT_NONLINEAR_MAX_DIMENSION) wrapper
+    vx_size nonlinearMaxDimension() const
+    {
+        vx_size v;
+        query(VX_CONTEXT_NONLINEAR_MAX_DIMENSION, v);
+        return v;
+    }
+#endif
+
+    /// vxSetContextAttribute(VX_CONTEXT_IMMEDIATE_BORDER) wrapper
+    void setBorderMode(vx_border_t &border)
+    { IVX_CHECK_STATUS(vxSetContextAttribute(ref, VX_CONTEXT_IMMEDIATE_BORDER, &border, sizeof(border))); }
+
 };
 
 /// vx_graph wrapper
@@ -1678,6 +1823,26 @@ static const vx_enum
         query(VX_THRESHOLD_FALSE_VALUE, v);
         return v;
     }
+
+    /// vxSetThresholdAttribute(THRESHOLD_VALUE) wrapper
+    void setValue(vx_int32 &val)
+    { IVX_CHECK_STATUS(vxSetThresholdAttribute(ref, VX_THRESHOLD_THRESHOLD_VALUE, &val, sizeof(val))); }
+
+    /// vxSetThresholdAttribute(THRESHOLD_LOWER) wrapper
+    void setValueLower(vx_int32 &val)
+    { IVX_CHECK_STATUS(vxSetThresholdAttribute(ref, VX_THRESHOLD_THRESHOLD_LOWER, &val, sizeof(val))); }
+
+    /// vxSetThresholdAttribute(THRESHOLD_UPPER) wrapper
+    void setValueUpper(vx_int32 &val)
+    { IVX_CHECK_STATUS(vxSetThresholdAttribute(ref, VX_THRESHOLD_THRESHOLD_UPPER, &val, sizeof(val))); }
+
+    /// vxSetThresholdAttribute(TRUE_VALUE) wrapper
+    void setValueTrue(vx_int32 &val)
+    { IVX_CHECK_STATUS(vxSetThresholdAttribute(ref, VX_THRESHOLD_TRUE_VALUE, &val, sizeof(val))); }
+
+    /// vxSetThresholdAttribute(FALSE_VALUE) wrapper
+    void setValueFalse(vx_int32 &val)
+    { IVX_CHECK_STATUS(vxSetThresholdAttribute(ref, VX_THRESHOLD_FALSE_VALUE, &val, sizeof(val))); }
 };
 
 /// vx_array wrapper
@@ -1693,6 +1858,160 @@ public:
     /// vxCreateVirtualArray() wrapper
     static Array createVirtual(vx_graph g, vx_enum type, vx_size capacity)
     { return Array(vxCreateVirtualArray(g, type, capacity)); }
+
+#ifndef VX_VERSION_1_1
+    static const vx_enum
+        VX_MEMORY_TYPE_HOST = VX_IMPORT_TYPE_HOST,
+        VX_ARRAY_ITEMTYPE   = VX_ARRAY_ATTRIBUTE_ITEMTYPE,
+        VX_ARRAY_NUMITEMS   = VX_ARRAY_ATTRIBUTE_NUMITEMS,
+        VX_ARRAY_CAPACITY   = VX_ARRAY_ATTRIBUTE_CAPACITY,
+        VX_ARRAY_ITEMSIZE   = VX_ARRAY_ATTRIBUTE_ITEMSIZE;
+#endif
+
+    template<typename T>
+    void query(vx_enum att, T& value) const
+    { IVX_CHECK_STATUS( vxQueryArray(ref, att, &value, sizeof(value)) ); }
+
+    vx_enum itemType() const
+    {
+        vx_enum v;
+        query(VX_ARRAY_ITEMTYPE, v);
+        return v;
+    }
+
+    vx_size itemSize() const
+    {
+        vx_size v;
+        query(VX_ARRAY_ITEMSIZE, v);
+        return v;
+    }
+
+    vx_size capacity() const
+    {
+        vx_size v;
+        query(VX_ARRAY_CAPACITY, v);
+        return v;
+    }
+
+    vx_size itemCount() const
+    {
+        vx_size v;
+        query(VX_ARRAY_NUMITEMS, v);
+        return v;
+    }
+
+    void copyRangeTo(size_t start, size_t end, void* data)
+    {
+        if (!data) throw WrapperError(std::string(__func__) + "(): output pointer is 0");
+#ifdef VX_VERSION_1_1
+        IVX_CHECK_STATUS(vxCopyArrayRange(ref, start, end, itemSize(), data, VX_READ_ONLY, VX_MEMORY_TYPE_HOST));
+#else
+        vx_size stride = itemSize();
+        IVX_CHECK_STATUS(vxAccessArrayRange(ref, start, end, &stride, &data, VX_READ_ONLY));
+        IVX_CHECK_STATUS(vxCommitArrayRange(ref, start, end, data));
+#endif
+    }
+
+    void copyTo(void* data)
+    { copyRangeTo(0, itemCount(), data); }
+
+    void copyRangeFrom(size_t start, size_t end, const void* data)
+    {
+        if (!data) throw WrapperError(std::string(__func__) + "(): input pointer is 0");
+#ifdef VX_VERSION_1_1
+        IVX_CHECK_STATUS(vxCopyArrayRange(ref, start, end, itemSize(), const_cast<void*>(data), VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST));
+#else
+        vx_size stride = itemSize();
+        IVX_CHECK_STATUS(vxAccessArrayRange(ref, start, end, &stride, const_cast<void**>(&data), VX_WRITE_ONLY));
+        IVX_CHECK_STATUS(vxCommitArrayRange(ref, start, end, data));
+#endif
+    }
+
+    void copyFrom(const void* data)
+    { copyRangeFrom(0, itemCount(), data); }
+
+    void copyRange(size_t start, size_t end, void* data, vx_enum usage, vx_enum memType = VX_MEMORY_TYPE_HOST)
+    {
+        if (!data) throw WrapperError(std::string(__func__) + "(): data pointer is 0");
+#ifdef VX_VERSION_1_1
+        IVX_CHECK_STATUS(vxCopyArrayRange(ref, start, end, itemSize(), data, usage, memType));
+#else
+        vx_size stride = itemSize();
+        IVX_CHECK_STATUS(vxAccessArrayRange(ref, start, end, &stride, &data, usage));
+        IVX_CHECK_STATUS(vxCommitArrayRange(ref, start, end, data));
+        (void)memType;
+#endif
+    }
+
+    void copy(void* data, vx_enum usage, vx_enum memType = VX_MEMORY_TYPE_HOST)
+    { copyRange(0, itemCount(), data, usage, memType); }
+
+    template<typename T> void copyRangeTo(size_t start, size_t end, std::vector<T>& data)
+    {
+        if (TypeToEnum<T>::value != itemType()) throw WrapperError(std::string(__func__) + "(): destination type is wrong");
+        if (data.size() != (end - start))
+        {
+            if (data.size() == 0)
+                data.resize((end - start));
+            else
+                throw WrapperError(std::string(__func__) + "(): destination size is wrong");
+        }
+        copyRangeTo(start, end, &data[0]);
+    }
+
+    template<typename T> void copyTo(std::vector<T>& data)
+    { copyRangeTo(0, itemCount(), data); }
+
+    template<typename T> void copyRangeFrom(size_t start, size_t end, const std::vector<T>& data)
+    {
+        if (TypeToEnum<T>::value != itemType()) throw WrapperError(std::string(__func__) + "(): source type is wrong");
+        if (data.size() != (end - start)) throw WrapperError(std::string(__func__) + "(): source size is wrong");
+        copyRangeFrom(start, end, &data[0]);
+    }
+
+    template<typename T> void copyFrom(std::vector<T>& data)
+    { copyRangeFrom(0, itemCount(), data); }
+
+#ifdef IVX_USE_OPENCV
+    void copyRangeTo(size_t start, size_t end, cv::Mat& m)
+    {
+        if (m.type() != enumToCVType(itemType())) throw WrapperError(std::string(__func__) + "(): destination type is wrong");
+        if (!(
+                ((vx_size)(m.rows) == (end - start) && m.cols == 1) ||
+                ((vx_size)(m.cols) == (end - start) && m.rows == 1)
+            ) && !m.empty()) throw WrapperError(std::string(__func__) + "(): destination size is wrong");
+
+        if (m.isContinuous() && (vx_size)(m.total()) == (end - start))
+        {
+            copyRangeTo(start, end, m.ptr());
+        }
+        else
+        {
+            cv::Mat tmp(1, (int)(end - start), enumToCVType(itemType()));
+            copyRangeTo(start, end, tmp.ptr());
+            if (m.empty())
+                m = tmp;
+            else
+                tmp.copyTo(m);
+        }
+    }
+
+    void copyTo(cv::Mat& m)
+    { copyRangeTo(0, itemCount(), m); }
+
+    void copyRangeFrom(size_t start, size_t end, const cv::Mat& m)
+    {
+        if (!(
+                ((vx_size)(m.rows) == (end - start) && m.cols == 1) ||
+                ((vx_size)(m.cols) == (end - start) && m.rows == 1)
+             )) throw WrapperError(std::string(__func__) + "(): source size is wrong");
+        if (m.type() != enumToCVType(itemType())) throw WrapperError(std::string(__func__) + "(): source type is wrong");
+        copyFrom(m.isContinuous() ? m.ptr() : m.clone().ptr());
+    }
+
+    void copyFrom(const cv::Mat& m)
+    { copyRangeFrom(0, itemCount(), m); }
+#endif //IVX_USE_OPENCV
 };
 
 /*
@@ -1751,6 +2070,9 @@ public:
     {
         return VX_TYPE_INT16;
     }
+
+    void setScale(vx_uint32 newScale)
+    { IVX_CHECK_STATUS( vxSetConvolutionAttribute(ref, VX_CONVOLUTION_SCALE, &newScale, sizeof(newScale)) ); }
 
     void copyTo(void* data)
     {
@@ -2003,7 +2325,7 @@ public:
 namespace nodes {
 
 /// Creates a Gaussian Filter 3x3 Node (vxGaussian3x3Node)
-Node gaussian3x3(vx_graph graph, vx_image inImg, vx_image outImg)
+inline Node gaussian3x3(vx_graph graph, vx_image inImg, vx_image outImg)
 { return Node(vxGaussian3x3Node(graph, inImg, outImg)); }
 
 } // namespace nodes
