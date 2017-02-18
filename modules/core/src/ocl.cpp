@@ -1940,7 +1940,7 @@ String Device::OpenCL_C_Version() const
 { return p ? p->getStrProp(CL_DEVICE_OPENCL_C_VERSION) : String(); }
 
 String Device::OpenCLVersion() const
-{ return p ? p->getStrProp(CL_DEVICE_EXTENSIONS) : String(); }
+{ return p ? p->getStrProp(CL_DEVICE_VERSION) : String(); }
 
 int Device::deviceVersionMajor() const
 { return p ? p->deviceVersionMajor_ : 0; }
@@ -3160,6 +3160,7 @@ KernelArg::KernelArg()
 KernelArg::KernelArg(int _flags, UMat* _m, int _wscale, int _iwscale, const void* _obj, size_t _sz)
     : flags(_flags), m(_m), obj(_obj), sz(_sz), wscale(_wscale), iwscale(_iwscale)
 {
+    CV_Assert(_flags == LOCAL || _flags == CONSTANT || _m != NULL);
 }
 
 KernelArg KernelArg::Constant(const Mat& m)
@@ -5582,7 +5583,7 @@ struct PlatformInfo::Impl
         getDevices(devices, handle);
     }
 
-    String getStrProp(cl_device_info prop) const
+    String getStrProp(cl_platform_info prop) const
     {
         char buf[1024];
         size_t sz=0;
