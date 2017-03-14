@@ -1085,6 +1085,29 @@ public:
       immediately below the main one.
     - `d>0` is a diagonal from the upper half. For example, d=1 means the diagonal is set
       immediately above the main one.
+    For example:
+    @code
+        Mat m = (Mat_<int>(3,3) <<
+                    1,2,3,
+                    4,5,6,
+                    7,8,9);
+        Mat d0 = m.diag(0);
+        Mat d1 = m.diag(1);
+        Mat d_1 = m.diag(-1);
+    @endcode
+    The resulting matrices are
+    @code
+     d0 =
+       [1;
+        5;
+        9]
+     d1 =
+       [2;
+        6]
+     d_1 =
+       [4;
+        8]
+    @endcode
      */
     Mat diag(int d=0) const;
 
@@ -2287,9 +2310,9 @@ public:
     UMat colRange(int startcol, int endcol) const;
     UMat colRange(const Range& r) const;
     //! ... for the specified diagonal
-    // (d=0 - the main diagonal,
-    //  >0 - a diagonal from the lower half,
-    //  <0 - a diagonal from the upper half)
+    //! (d=0 - the main diagonal,
+    //!  >0 - a diagonal from the upper half,
+    //!  <0 - a diagonal from the lower half)
     UMat diag(int d=0) const;
     //! constructs a square diagonal matrix which main diagonal is vector "d"
     static UMat diag(const UMat& d);
