@@ -56,6 +56,10 @@ namespace details {
 
 #ifdef OPENCV_TRACE
 
+#ifdef _MSC_VER
+#pragma warning(disable:4065) // switch statement contains 'default' but no 'case' labels
+#endif
+
 static int64 g_zero_timestamp = 0;
 
 static int64 getTimestamp()
@@ -167,7 +171,7 @@ public:
 #endif
 #ifdef HAVE_OPENVX
         if (result.durationImplOpenVX)
-            ok &= this->printf(",tOVX=%lld", (long long int)result.durationImplOpenVX));
+            ok &= this->printf(",tOVX=%lld", (long long int)result.durationImplOpenVX);
 #endif
         ok &= this->printf("\n");
         return ok;
