@@ -40,11 +40,14 @@
 //M*/
 
 #include <opencv2/core.hpp>
+#include <opencv2/core/utils/trace.hpp>
 #include "cvconfig.h"
 #include <opencv2/dnn.hpp>
 #include <opencv2/dnn/all_layers.hpp>
 
 namespace cv { namespace dnn {
+CV__DNN_EXPERIMENTAL_NS_BEGIN
 Mutex& getInitializationMutex();
 void initializeLayerFactory();
+CV__DNN_EXPERIMENTAL_NS_END
 }} // namespace

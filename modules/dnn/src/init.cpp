@@ -42,10 +42,9 @@
 #include "precomp.hpp"
 #include <opencv2/dnn/layer.details.hpp>
 
-namespace cv
-{
-namespace dnn
-{
+namespace cv {
+namespace dnn {
+CV__DNN_EXPERIMENTAL_NS_BEGIN
 
 static Mutex* __initialization_mutex = NULL;
 Mutex& getInitializationMutex()
@@ -60,6 +59,8 @@ Mutex* __initialization_mutex_initializer = &getInitializationMutex();
 
 void initializeLayerFactory()
 {
+    CV_TRACE_FUNCTION();
+
     CV_DNN_REGISTER_LAYER_CLASS(Slice,          SliceLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Split,          SplitLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Concat,         ConcatLayer);
@@ -98,4 +99,5 @@ void initializeLayerFactory()
     CV_DNN_REGISTER_LAYER_CLASS(Scale,          ScaleLayer);
 }
 
-}} //namespace
+CV__DNN_EXPERIMENTAL_NS_END
+}} // namespace

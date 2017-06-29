@@ -94,6 +94,7 @@ class LSTMLayerImpl : public LSTMLayer
 public:
 
     LSTMLayerImpl(const LayerParams& params)
+        : numTimeStamps(0), numSamples(0)
     {
         setParamsFrom(params);
         type = "LSTM";
@@ -220,6 +221,9 @@ public:
 
     void forward(std::vector<Mat*> &input, std::vector<Mat> &output, std::vector<Mat> &internals)
     {
+        CV_TRACE_FUNCTION();
+        CV_TRACE_ARG_VALUE(name, "name", name.c_str());
+
         const Mat &Wh = blobs[0];
         const Mat &Wx = blobs[1];
         const Mat &bias = blobs[2];
@@ -307,6 +311,7 @@ class RNNLayerImpl : public RNNLayer
 public:
 
     RNNLayerImpl(const LayerParams& params)
+        : numX(0), numH(0), numO(0), numSamples(0), numTimestamps(0), numSamplesTotal(0), dtype(0)
     {
         setParamsFrom(params);
         type = "RNN";
@@ -404,6 +409,9 @@ public:
 
     void forward(std::vector<Mat*> &input, std::vector<Mat> &output, std::vector<Mat> &internals)
     {
+        CV_TRACE_FUNCTION();
+        CV_TRACE_ARG_VALUE(name, "name", name.c_str());
+
         Mat xTs = input[0]->reshape(1, numSamplesTotal);
         Mat oTs = output[0].reshape(1, numSamplesTotal);
         Mat hTs = produceH ? output[1].reshape(1, numSamplesTotal) : Mat();

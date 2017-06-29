@@ -47,10 +47,16 @@
 #include <iostream>
 #include <fstream>
 
-namespace cv {
-namespace dnn {
 #if defined(ENABLE_TORCH_IMPORTER) && ENABLE_TORCH_IMPORTER
 #include "THDiskFile.h"
+#endif
+
+namespace cv {
+namespace dnn {
+CV__DNN_EXPERIMENTAL_NS_BEGIN
+
+#if defined(ENABLE_TORCH_IMPORTER) && ENABLE_TORCH_IMPORTER
+using namespace TH;
 
 //#ifdef NDEBUG
 static bool dbgPrint = false;
@@ -115,6 +121,8 @@ struct TorchImporter : public ::cv::dnn::Importer
 
     TorchImporter(String filename, bool isBinary)
     {
+        CV_TRACE_FUNCTION();
+
         rootModule = curModule = NULL;
         moduleCounter = 0;
 
@@ -876,7 +884,7 @@ struct TorchImporter : public ::cv::dnn::Importer
                 return mergeId;
             }
             else if (module->thName == "ConcatTable") {
-                int newId, splitId;
+                int newId = -1, splitId;
                 LayerParams splitParams;
 
                 splitId = net.addLayer(generateLayerName("torchSplit"), "Split", splitParams);
@@ -966,6 +974,8 @@ struct TorchImporter : public ::cv::dnn::Importer
 
     void populateNet(Net net_)
     {
+        CV_TRACE_FUNCTION();
+
         if (rootModule == NULL)
         {
             rootModule = new Module("Sequential");
@@ -1014,6 +1024,8 @@ Mat readTorchBlob(const String&, bool)
 
 Net readNetFromTorch(const String &model, bool isBinary)
 {
+    CV_TRACE_FUNCTION();
+
     Ptr<Importer> importer = createTorchImporter(model, isBinary);
     Net net;
     if (importer)
@@ -1021,5 +1033,5 @@ Net readNetFromTorch(const String &model, bool isBinary)
     return net;
 }
 
-}
-}
+CV__DNN_EXPERIMENTAL_NS_END
+}} // namespace
