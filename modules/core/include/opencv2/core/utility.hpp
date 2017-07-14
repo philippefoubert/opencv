@@ -56,7 +56,7 @@
 #include "opencv2/core.hpp"
 #include <ostream>
 
-#ifdef CV_CXX_11
+#ifdef CV_CXX11
 #include <functional>
 #endif
 
@@ -482,7 +482,7 @@ public:
 */
 CV_EXPORTS void parallel_for_(const Range& range, const ParallelLoopBody& body, double nstripes=-1.);
 
-#ifdef CV_CXX_11
+#ifdef CV_CXX11
 class ParallelLoopBodyLambdaWrapper : public ParallelLoopBody
 {
 private:
@@ -1022,7 +1022,6 @@ template<typename _Tp, size_t fixed_size> inline
 AutoBuffer<_Tp, fixed_size>::operator const _Tp* () const
 { return ptr; }
 
-#ifndef OPENCV_NOSTL
 template<> inline std::string CommandLineParser::get<std::string>(int index, bool space_delete) const
 {
     return get<String>(index, space_delete);
@@ -1031,7 +1030,6 @@ template<> inline std::string CommandLineParser::get<std::string>(const String& 
 {
     return get<String>(name, space_delete);
 }
-#endif // OPENCV_NOSTL
 
 //! @endcond
 

@@ -10,8 +10,9 @@
 //                           License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2013, OpenCV Foundation, all rights reserved.
-// Copyright (C) 2017, Intel Corporation, all rights reserved.
+// Copyright (C) 2000-2008, Intel Corporation, all rights reserved.
+// Copyright (C) 2009, Willow Garage Inc., all rights reserved.
+// Copyright (C) 2014-2015, Itseez Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -40,15 +41,20 @@
 //
 //M*/
 
-#include "precomp.hpp"
-#include "layers_common.hpp"
-#include "opencv2/core/hal/intrin.hpp"
+#ifndef OPENCV_IMGPROC_CORNER_HPP
+#define OPENCV_IMGPROC_CORNER_HPP
 
-#define fastConv_some_avx fastConv_avx
-#define fastGEMM1T_some_avx fastGEMM1T_avx
-#define fastGEMM_some_avx fastGEMM_avx
+namespace cv
+{
 
-#undef _mm256_fmadd_ps
-#define _mm256_fmadd_ps(a, b, c) _mm256_add_ps(c, _mm256_mul_ps(a, b))
+#if CV_TRY_AVX
+    int calcMinEigenValLine_AVX(const float* cov, float* dst, int width);
+    int calcHarrisLine_AVX(const float* cov, float* dst, double k, int width);
+    int cornerEigenValsVecsLine_AVX(const float* dxdata, const float* dydata, float* cov_data, int width);
+#endif // CV_TRY_AVX
 
-#include "layers_common.simd.hpp"
+}
+
+#endif
+
+/* End of file */

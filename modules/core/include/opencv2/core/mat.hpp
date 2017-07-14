@@ -981,6 +981,12 @@ public:
     */
     template<typename _Tp> explicit Mat(const std::vector<_Tp>& vec, bool copyData=false);
 
+#ifdef CV_CXX11
+    /** @overload
+    */
+    template<typename _Tp> explicit Mat(const std::initializer_list<_Tp> list);
+#endif
+
 #ifdef CV_CXX_STD_ARRAY
     /** @overload
     */
@@ -2170,6 +2176,10 @@ public:
     explicit Mat_(const Point3_<typename DataType<_Tp>::channel_type>& pt, bool copyData=true);
     explicit Mat_(const MatCommaInitializer_<_Tp>& commaInitializer);
 
+#ifdef CV_CXX11
+    Mat_(std::initializer_list<_Tp> values);
+#endif
+
 #ifdef CV_CXX_STD_ARRAY
     template <std::size_t _Nm> explicit Mat_(const std::array<_Tp, _Nm>& arr, bool copyData=false);
 #endif
@@ -2969,9 +2979,7 @@ public:
     typedef const uchar** pointer;
     typedef uchar* reference;
 
-#ifndef OPENCV_NOSTL
     typedef std::random_access_iterator_tag iterator_category;
-#endif
 
     //! default constructor
     MatConstIterator();
@@ -3036,9 +3044,7 @@ public:
     typedef const _Tp* pointer;
     typedef const _Tp& reference;
 
-#ifndef OPENCV_NOSTL
     typedef std::random_access_iterator_tag iterator_category;
-#endif
 
     //! default constructor
     MatConstIterator_();
@@ -3089,9 +3095,7 @@ public:
     typedef _Tp* pointer;
     typedef _Tp& reference;
 
-#ifndef OPENCV_NOSTL
     typedef std::random_access_iterator_tag iterator_category;
-#endif
 
     //! the default constructor
     MatIterator_();
@@ -3225,9 +3229,7 @@ template<typename _Tp> class SparseMatConstIterator_ : public SparseMatConstIter
 {
 public:
 
-#ifndef OPENCV_NOSTL
     typedef std::forward_iterator_tag iterator_category;
-#endif
 
     //! the default constructor
     SparseMatConstIterator_();
@@ -3261,9 +3263,7 @@ template<typename _Tp> class SparseMatIterator_ : public SparseMatConstIterator_
 {
 public:
 
-#ifndef OPENCV_NOSTL
     typedef std::forward_iterator_tag iterator_category;
-#endif
 
     //! the default constructor
     SparseMatIterator_();

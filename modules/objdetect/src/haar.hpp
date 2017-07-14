@@ -7,11 +7,10 @@
 //  copy or use the software.
 //
 //
-//                           License Agreement
+//                        Intel License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2013, OpenCV Foundation, all rights reserved.
-// Copyright (C) 2017, Intel Corporation, all rights reserved.
+// Copyright (C) 2000, Intel Corporation, all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -24,7 +23,7 @@
 //     this list of conditions and the following disclaimer in the documentation
 //     and/or other materials provided with the distribution.
 //
-//   * The name of the copyright holders may not be used to endorse or promote products
+//   * The name of Intel Corporation may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
 //
 // This software is provided by the copyright holders and contributors "as is" and
@@ -40,12 +39,63 @@
 //
 //M*/
 
-#include "precomp.hpp"
-#include "layers_common.hpp"
-#include "opencv2/core/hal/intrin.hpp"
+/* Haar features calculation */
 
-#define fastConv_some_avx fastConv_avx2
-#define fastGEMM1T_some_avx fastGEMM1T_avx2
-#define fastGEMM_some_avx fastGEMM_avx2
+#ifndef OPENCV_OBJDETECT_HAAR_HPP
+#define OPENCV_OBJDETECT_HAAR_HPP
 
-#include "layers_common.simd.hpp"
+#define CV_HAAR_FEATURE_MAX_LOCAL 3
+
+typedef int sumtype;
+typedef double sqsumtype;
+
+typedef struct CvHidHaarFeature
+{
+    struct
+    {
+        sumtype *p0, *p1, *p2, *p3;
+        float weight;
+    }
+    rect[CV_HAAR_FEATURE_MAX_LOCAL];
+} CvHidHaarFeature;
+
+
+typedef struct CvHidHaarTreeNode
+{
+    CvHidHaarFeature feature;
+    float threshold;
+    int left;
+    int right;
+} CvHidHaarTreeNode;
+
+
+typedef struct CvHidHaarClassifier
+{
+    int count;
+    //CvHaarFeature* orig_feature;
+    CvHidHaarTreeNode* node;
+    float* alpha;
+} CvHidHaarClassifier;
+
+#define calc_sumf(rect,offset) \
+    static_cast<float>((rect).p0[offset] - (rect).p1[offset] - (rect).p2[offset] + (rect).p3[offset])
+
+namespace cv_haar_avx
+{
+#if 0 /*CV_TRY_AVX*/
+    #define CV_HAAR_USE_AVX 1
+#else
+    #define CV_HAAR_USE_AVX 0
+#endif
+
+#if CV_HAAR_USE_AVX
+    // AVX version icvEvalHidHaarClassifier.  Process 8 CvHidHaarClassifiers per call. Check AVX support before invocation!!
+    double icvEvalHidHaarClassifierAVX(CvHidHaarClassifier* classifier, double variance_norm_factor, size_t p_offset);
+    double icvEvalHidHaarStumpClassifierAVX(CvHidHaarClassifier* classifier, double variance_norm_factor, size_t p_offset);
+    double icvEvalHidHaarStumpClassifierTwoRectAVX(CvHidHaarClassifier* classifier, double variance_norm_factor, size_t p_offset);
+#endif
+}
+
+#endif
+
+/* End of file. */
