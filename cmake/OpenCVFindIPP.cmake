@@ -137,27 +137,42 @@ macro(ipp_detect_version)
         set(IPP_LIB_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
       endif (WIN32)
     else ()
-      set(IPP_LIB_PREFIX ${CMAKE_STATIC_LIBRARY_PREFIX})
-      set(IPP_LIB_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
+      if(WIN32 AND MINGW)
+        # e.g. ippicvmt.lib
+        set(IPP_LIB_PREFIX "")
+        set(IPP_LIB_SUFFIX ".lib")
+      else(WIN32 AND MINGW)
+        # e.g. libippicvmt.a
+        set(IPP_LIB_PREFIX ${CMAKE_STATIC_LIBRARY_PREFIX})
+        set(IPP_LIB_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
+      endif(WIN32 AND MINGW)
     endif ()
     if (EXISTS ${IPP_LIBRARY_DIR}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX})
       if (BUILD_WITH_DYNAMIC_IPP AND NOT HAVE_IPP_ICV_ONLY)
         # When using dynamic libraries from standalone Intel IPP it is your responsibility to install those on the target system
         list(APPEND IPP_LIBRARIES ${IPP_LIBRARY_DIR}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX})
       else ()
-        add_library(ipp${name} STATIC IMPORTED)
-        set_target_properties(ipp${name} PROPERTIES
+        add_library(${IPP_PREFIX}${name} STATIC IMPORTED)
+        set_target_properties(${IPP_PREFIX}${name} PROPERTIES
           IMPORTED_LINK_INTERFACE_LIBRARIES ""
           IMPORTED_LOCATION ${IPP_LIBRARY_DIR}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX}
         )
-        list(APPEND IPP_LIBRARIES ipp${name})
+        list(APPEND IPP_LIBRARIES ${IPP_PREFIX}${name})
+        if(WIN32 AND MINGW)
+          # To avoid undefined references to __security_check_cookie, __GSHandlerCheck and __chkstk
+          # mingw_fix.cpp has to be compiled
+          add_library(${IPP_PREFIX}_mingw_fix STATIC "${OpenCV_SOURCE_DIR}/3rdparty/ippicv/mingw_fix.cpp")
+          add_dependencies(${IPP_PREFIX}${name} ${IPP_PREFIX}_mingw_fix)
+          ocv_install_target(${IPP_PREFIX}_mingw_fix EXPORT OpenCVModules ARCHIVE DESTINATION ${OPENCV_3P_LIB_INSTALL_PATH} COMPONENT dev)
+          list(APPEND IPP_LIBRARIES ${IPP_PREFIX}_mingw_fix)
+        endif(WIN32 AND MINGW)
         if (NOT BUILD_SHARED_LIBS)
           # CMake doesn't support "install(TARGETS ${IPP_PREFIX}${name} " command with imported targets
           install(FILES ${IPP_LIBRARY_DIR}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX}
                   DESTINATION ${OPENCV_3P_LIB_INSTALL_PATH} COMPONENT dev)
           string(TOUPPER ${name} uname)
-          set(IPP${uname}_INSTALL_PATH "${CMAKE_INSTALL_PREFIX}/${OPENCV_3P_LIB_INSTALL_PATH}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX}" CACHE INTERNAL "" FORCE)
-          set(IPP${uname}_LOCATION_PATH "${IPP_LIBRARY_DIR}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX}" CACHE INTERNAL "" FORCE)
+          set(IPP${uname}_INSTALL_PATH  "${CMAKE_INSTALL_PREFIX}/${OPENCV_3P_LIB_INSTALL_PATH}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX}" CACHE INTERNAL "" FORCE)
+          set(IPP${uname}_LOCATION_PATH "${IPP_LIBRARY_DIR}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX}"                                    CACHE INTERNAL "" FORCE)
         endif()
       endif()
     else()
@@ -250,23 +265,4 @@ file(TO_CMAKE_PATH "${IPPROOT}" __IPPROOT)
 if(EXISTS "${__IPPROOT}/include/ippversion.h")
   set(IPP_ROOT_DIR ${__IPPROOT})
   ipp_detect_version()
-endif()
-
-
-if(WIN32 AND MINGW AND NOT IPP_VERSION_MAJOR LESS 7)
-    # Since Intel IPP built with Microsoft compiler and /GS option
-    # ======================================================
-    # From Windows SDK 7.1
-    #   (usually in "C:\Program Files\Microsoft Visual Studio 10.0\VC\lib"),
-    # to avoid undefined reference to __security_cookie and _chkstk:
-    set(MSV_RUNTMCHK "RunTmChk")
-    set(IPP_LIBRARIES ${IPP_LIBRARIES} ${MSV_RUNTMCHK}${IPP_LIB_SUFFIX})
-
-    # To avoid undefined reference to _alldiv and _chkstk
-    # ===================================================
-    # NB: it may require a recompilation of w32api (after having modified
-    #     the file ntdll.def) to export the required functions
-    #     See http://code.opencv.org/issues/1906 for additional details
-    set(MSV_NTDLL    "ntdll")
-    set(IPP_LIBRARIES ${IPP_LIBRARIES} ${MSV_NTDLL}${IPP_LIB_SUFFIX})
 endif()
