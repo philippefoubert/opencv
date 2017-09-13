@@ -43,6 +43,7 @@
 #include <list>
 #include <map>
 #include <deque>
+#include <set>
 #include <string>
 #include <sstream>
 #include <iostream> // std::cerr
@@ -523,6 +524,7 @@ struct Device::Impl
 
         name_ = getStrProp(CL_DEVICE_NAME);
         version_ = getStrProp(CL_DEVICE_VERSION);
+        extensions_ = getStrProp(CL_DEVICE_EXTENSIONS);
         doubleFPConfig_ = getProp<cl_device_fp_config, int>(CL_DEVICE_DOUBLE_FP_CONFIG);
         hostUnifiedMemory_ = getBoolProp(CL_DEVICE_HOST_UNIFIED_MEMORY);
         maxComputeUnits_ = getProp<cl_uint, int>(CL_DEVICE_MAX_COMPUTE_UNITS);
@@ -532,6 +534,20 @@ struct Device::Impl
 
         String deviceVersion_ = getStrProp(CL_DEVICE_VERSION);
         parseDeviceVersion(deviceVersion_, deviceVersionMajor_, deviceVersionMinor_);
+
+        size_t pos = 0;
+        while (pos < extensions_.size())
+        {
+            size_t pos2 = extensions_.find(' ', pos);
+            if (pos2 == String::npos)
+                pos2 = extensions_.size();
+            if (pos2 > pos)
+            {
+                std::string extensionName = extensions_.substr(pos, pos2 - pos);
+                extensions_set_.insert(extensionName);
+            }
+            pos = pos2 + 1;
+        }
 
         intelSubgroupsSupport_ = isExtensionSupported("cl_intel_subgroups");
 
@@ -574,23 +590,19 @@ struct Device::Impl
             sz < sizeof(buf) ? String(buf) : String();
     }
 
-    bool isExtensionSupported(const String& extensionName) const
+    bool isExtensionSupported(const std::string& extensionName) const
     {
-        bool ret = false;
-        size_t pos = getStrProp(CL_DEVICE_EXTENSIONS).find(extensionName);
-        if (pos != String::npos)
-        {
-            ret = true;
-        }
-        return ret;
+        return extensions_set_.count(extensionName) > 0;
     }
 
 
     IMPLEMENT_REFCOUNTABLE();
+
     cl_device_id handle;
 
     String name_;
     String version_;
+    std::string extensions_;
     int doubleFPConfig_;
     bool hostUnifiedMemory_;
     int maxComputeUnits_;
@@ -602,6 +614,8 @@ struct Device::Impl
     String vendorName_;
     int vendorID_;
     bool intelSubgroupsSupport_;
+
+    std::set<std::string> extensions_set_;
 };
 
 
@@ -656,7 +670,10 @@ String Device::name() const
 { return p ? p->name_ : String(); }
 
 String Device::extensions() const
-{ return p ? p->getStrProp(CL_DEVICE_EXTENSIONS) : String(); }
+{ return p ? String(p->extensions_) : String(); }
+
+bool Device::isExtensionSupported(const String& extensionName) const
+{ return p ? p->isExtensionSupported(extensionName) : false; }
 
 String Device::version() const
 { return p ? p->version_ : String(); }
@@ -749,16 +766,7 @@ bool Device::imageSupport() const
 
 bool Device::imageFromBufferSupport() const
 {
-    bool ret = false;
-    if (p)
-    {
-        size_t pos = p->getStrProp(CL_DEVICE_EXTENSIONS).find("cl_khr_image2d_from_buffer");
-        if (pos != String::npos)
-        {
-            ret = true;
-        }
-    }
-    return ret;
+    return p ? p->isExtensionSupported("cl_khr_image2d_from_buffer") : false;
 }
 
 uint Device::imagePitchAlignment() const
