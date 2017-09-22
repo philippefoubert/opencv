@@ -363,7 +363,7 @@ void RemoveIdentityOps(tensorflow::GraphDef& net) {
         const tensorflow::NodeDef &layer = net.node(li);
         String type = layer.op();
 
-        if (type == "Identity") {
+        if (type == "Identity" || type == "Dropout") {
             identity_ops_idx.push_back(li);
             identity_ops[layer.name()] = layer.input(0);
         }
@@ -771,7 +771,6 @@ void TFImporter::populateNet(Net dstNet)
         else if (type == "Reshape")
         {
             layerParams.set("dim", parseDims(getConstBlob(layer, value_id, 1)));
-            layerParams.set("reorder_dims", true);
 
             int id = dstNet.addLayer(name, "Reshape", layerParams);
             layer_id[name] = id;
