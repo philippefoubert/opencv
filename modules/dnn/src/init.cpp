@@ -83,6 +83,7 @@ void initializeLayerFactory()
     CV_DNN_REGISTER_LAYER_CLASS(Concat,         ConcatLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Reshape,        ReshapeLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Flatten,        FlattenLayer);
+    CV_DNN_REGISTER_LAYER_CLASS(ResizeNearestNeighbor, ResizeNearestNeighborLayer);
 
     CV_DNN_REGISTER_LAYER_CLASS(Convolution,    ConvolutionLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Deconvolution,  DeconvolutionLayer);
@@ -106,6 +107,7 @@ void initializeLayerFactory()
     CV_DNN_REGISTER_LAYER_CLASS(MaxUnpool,      MaxUnpoolLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Dropout,        BlankLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Identity,       BlankLayer);
+    CV_DNN_REGISTER_LAYER_CLASS(Silence,        BlankLayer);
 
     CV_DNN_REGISTER_LAYER_CLASS(Crop,           CropLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Eltwise,        EltwiseLayer);
