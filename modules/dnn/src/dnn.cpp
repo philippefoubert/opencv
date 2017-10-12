@@ -85,15 +85,15 @@ static String toString(const T &v)
 }
 
 Mat blobFromImage(const Mat& image, double scalefactor, const Size& size,
-                  const Scalar& mean, bool swapRB)
+                  const Scalar& mean, bool swapRB, bool crop)
 {
     CV_TRACE_FUNCTION();
     std::vector<Mat> images(1, image);
-    return blobFromImages(images, scalefactor, size, mean, swapRB);
+    return blobFromImages(images, scalefactor, size, mean, swapRB, crop);
 }
 
 Mat blobFromImages(const std::vector<Mat>& images_, double scalefactor, Size size,
-                   const Scalar& mean_, bool swapRB)
+                   const Scalar& mean_, bool swapRB, bool crop)
 {
     CV_TRACE_FUNCTION();
     std::vector<Mat> images = images_;
@@ -104,13 +104,18 @@ Mat blobFromImages(const std::vector<Mat>& images_, double scalefactor, Size siz
             size = imgSize;
         if (size != imgSize)
         {
-            float resizeFactor = std::max(size.width / (float)imgSize.width,
-                                          size.height / (float)imgSize.height);
-            resize(images[i], images[i], Size(), resizeFactor, resizeFactor);
-            Rect crop(Point(0.5 * (images[i].cols - size.width),
-                            0.5 * (images[i].rows - size.height)),
-                      size);
-            images[i] = images[i](crop);
+            if(crop)
+            {
+              float resizeFactor = std::max(size.width / (float)imgSize.width,
+                                            size.height / (float)imgSize.height);
+              resize(images[i], images[i], Size(), resizeFactor, resizeFactor);
+              Rect crop(Point(0.5 * (images[i].cols - size.width),
+                              0.5 * (images[i].rows - size.height)),
+                        size);
+              images[i] = images[i](crop);
+            }
+            else
+              resize(images[i], images[i], size);
         }
         if(images[i].depth() == CV_8U)
             images[i].convertTo(images[i], CV_32F);
@@ -589,33 +594,7 @@ struct Net::Impl
         return wrapper;
     }
 
-    class HalideCompiler : public ParallelLoopBody
-    {
-    public:
-        HalideCompiler(const MapIdToLayerData& layers_, int preferableTarget_)
-            : layers(&layers_), preferableTarget(preferableTarget_) {}
-
-        void operator()(const Range& r) const
-        {
-            MapIdToLayerData::const_iterator it = layers->begin();
-            for (int i = 0; i < r.start && it != layers->end(); ++i, ++it) {}
-            for (int i = r.start; i < r.end && it != layers->end(); ++i, ++it)
-            {
-                const LayerData &ld = it->second;
-                Ptr<Layer> layer = ld.layerInstance;
-                bool skip = ld.skipFlags.find(DNN_BACKEND_HALIDE)->second;
-                if (layer->supportBackend(DNN_BACKEND_HALIDE) && !skip)
-                {
-                    Ptr<BackendNode> node = ld.backendNodes.find(DNN_BACKEND_HALIDE)->second;
-                    dnn::compileHalide(ld.outputBlobs, node, preferableTarget);
-                }
-            }
-        }
-    private:
-        const MapIdToLayerData* layers;
-        int preferableTarget;
-    };
-
+#ifdef HAVE_HALIDE
     void compileHalide()
     {
         CV_TRACE_FUNCTION();
@@ -623,8 +602,8 @@ struct Net::Impl
         CV_Assert(preferableBackend == DNN_BACKEND_HALIDE);
 
         HalideScheduler scheduler(halideConfigFile);
-        MapIdToLayerData::iterator it;
-        for (it = layers.begin(); it != layers.end(); ++it)
+        std::vector< std::reference_wrapper<LayerData> > compileList; compileList.reserve(64);
+        for (MapIdToLayerData::iterator it = layers.begin(); it != layers.end(); ++it)
         {
             LayerData &ld = it->second;
             Ptr<Layer> layer = ld.layerInstance;
@@ -639,10 +618,30 @@ struct Net::Impl
                                                 ld.inputBlobs, ld.outputBlobs,
                                                 preferableTarget);
                 }
+                compileList.emplace_back(ld);
             }
         }
-        parallel_for_(Range(0, layers.size()), HalideCompiler(layers, preferableTarget));
+        std::atomic<int> progress(0);
+        auto fn = ([&] () -> void
+        {
+            for (;;)
+            {
+                int id = progress.fetch_add(1);
+                if ((size_t)id >= compileList.size())
+                    return;
+                const LayerData& ld = compileList[id].get();
+                Ptr<BackendNode> node = ld.backendNodes.find(DNN_BACKEND_HALIDE)->second;
+                dnn::compileHalide(ld.outputBlobs, node, preferableTarget);
+            }
+        });
+        size_t num_threads = std::min(compileList.size(), (size_t)std::thread::hardware_concurrency());
+        num_threads = std::max((size_t)1u, std::min((size_t)8u, num_threads));
+        std::vector<std::thread> threads(num_threads - 1);
+        for (auto& t: threads) t = std::thread(fn);
+        fn(); // process own tasks
+        for (auto& t: threads) t.join();
     }
+#endif
 
     void clear()
     {
@@ -692,10 +691,12 @@ struct Net::Impl
 
             if (!netWasAllocated )
             {
-                // If user didn't call compileHalide() between
-                // setPreferableBackend(DNN_BACKEND_HALIDE) and forward().
+#ifdef HAVE_HALIDE
                 if (preferableBackend == DNN_BACKEND_HALIDE)
                     compileHalide();
+#else
+                CV_Assert(preferableBackend != DNN_BACKEND_HALIDE);
+#endif
             }
 
             netWasAllocated = true;

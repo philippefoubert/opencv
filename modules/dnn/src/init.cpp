@@ -92,11 +92,11 @@ void initializeLayerFactory()
     CV_DNN_REGISTER_LAYER_CLASS(InnerProduct,   InnerProductLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Softmax,        SoftmaxLayer);
     CV_DNN_REGISTER_LAYER_CLASS(MVN,            MVNLayer);
-    CV_DNN_REGISTER_LAYER_CLASS(LPNormalize,    LPNormalizeLayer);
 
     CV_DNN_REGISTER_LAYER_CLASS(ReLU,           ReLULayer);
     CV_DNN_REGISTER_LAYER_CLASS(ReLU6,          ReLU6Layer);
     CV_DNN_REGISTER_LAYER_CLASS(ChannelsPReLU,  ChannelsPReLULayer);
+    CV_DNN_REGISTER_LAYER_CLASS(PReLU,          ChannelsPReLULayer);
     CV_DNN_REGISTER_LAYER_CLASS(Sigmoid,        SigmoidLayer);
     CV_DNN_REGISTER_LAYER_CLASS(TanH,           TanHLayer);
     CV_DNN_REGISTER_LAYER_CLASS(ELU,            ELULayer);
@@ -113,6 +113,8 @@ void initializeLayerFactory()
     CV_DNN_REGISTER_LAYER_CLASS(Eltwise,        EltwiseLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Permute,        PermuteLayer);
     CV_DNN_REGISTER_LAYER_CLASS(PriorBox,       PriorBoxLayer);
+    CV_DNN_REGISTER_LAYER_CLASS(Reorg,          ReorgLayer);
+    CV_DNN_REGISTER_LAYER_CLASS(Region,         RegionLayer);
     CV_DNN_REGISTER_LAYER_CLASS(DetectionOutput, DetectionOutputLayer);
     CV_DNN_REGISTER_LAYER_CLASS(NormalizeBBox,  NormalizeBBoxLayer);
     CV_DNN_REGISTER_LAYER_CLASS(Normalize,      NormalizeBBoxLayer);

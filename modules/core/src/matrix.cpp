@@ -484,21 +484,31 @@ Mat::Mat(const Mat& m, const Range& _rowRange, const Range& _colRange)
     }
 
     *this = m;
-    if( _rowRange != Range::all() && _rowRange != Range(0,rows) )
+    try
     {
-        CV_Assert( 0 <= _rowRange.start && _rowRange.start <= _rowRange.end && _rowRange.end <= m.rows );
-        rows = _rowRange.size();
-        data += step*_rowRange.start;
-        flags |= SUBMATRIX_FLAG;
-    }
+        if( _rowRange != Range::all() && _rowRange != Range(0,rows) )
+        {
+            CV_Assert( 0 <= _rowRange.start && _rowRange.start <= _rowRange.end
+                       && _rowRange.end <= m.rows );
+            rows = _rowRange.size();
+            data += step*_rowRange.start;
+            flags |= SUBMATRIX_FLAG;
+        }
 
-    if( _colRange != Range::all() && _colRange != Range(0,cols) )
+        if( _colRange != Range::all() && _colRange != Range(0,cols) )
+        {
+            CV_Assert( 0 <= _colRange.start && _colRange.start <= _colRange.end
+                       && _colRange.end <= m.cols );
+            cols = _colRange.size();
+            data += _colRange.start*elemSize();
+            flags &= cols < m.cols ? ~CONTINUOUS_FLAG : -1;
+            flags |= SUBMATRIX_FLAG;
+        }
+    }
+    catch(...)
     {
-        CV_Assert( 0 <= _colRange.start && _colRange.start <= _colRange.end && _colRange.end <= m.cols );
-        cols = _colRange.size();
-        data += _colRange.start*elemSize();
-        flags &= cols < m.cols ? ~CONTINUOUS_FLAG : -1;
-        flags |= SUBMATRIX_FLAG;
+        release();
+        throw;
     }
 
     if( rows == 1 )
@@ -1141,7 +1151,7 @@ int Mat::checkVector(int _elemChannels, int _depth, bool _requireContinuous) con
 }
 
 template <typename T> static inline
-void scalarToRawData(const Scalar& s, T * const buf, const int cn, const int unroll_to)
+void scalarToRawData_(const Scalar& s, T * const buf, const int cn, const int unroll_to)
 {
     int i = 0;
     for(; i < cn; i++)
@@ -1159,25 +1169,25 @@ void scalarToRawData(const Scalar& s, void* _buf, int type, int unroll_to)
     switch(depth)
     {
     case CV_8U:
-        scalarToRawData<uchar>(s, (uchar*)_buf, cn, unroll_to);
+        scalarToRawData_<uchar>(s, (uchar*)_buf, cn, unroll_to);
         break;
     case CV_8S:
-        scalarToRawData<schar>(s, (schar*)_buf, cn, unroll_to);
+        scalarToRawData_<schar>(s, (schar*)_buf, cn, unroll_to);
         break;
     case CV_16U:
-        scalarToRawData<ushort>(s, (ushort*)_buf, cn, unroll_to);
+        scalarToRawData_<ushort>(s, (ushort*)_buf, cn, unroll_to);
         break;
     case CV_16S:
-        scalarToRawData<short>(s, (short*)_buf, cn, unroll_to);
+        scalarToRawData_<short>(s, (short*)_buf, cn, unroll_to);
         break;
     case CV_32S:
-            scalarToRawData<int>(s, (int*)_buf, cn, unroll_to);
+        scalarToRawData_<int>(s, (int*)_buf, cn, unroll_to);
         break;
     case CV_32F:
-        scalarToRawData<float>(s, (float*)_buf, cn, unroll_to);
+        scalarToRawData_<float>(s, (float*)_buf, cn, unroll_to);
         break;
     case CV_64F:
-        scalarToRawData<double>(s, (double*)_buf, cn, unroll_to);
+        scalarToRawData_<double>(s, (double*)_buf, cn, unroll_to);
         break;
     default:
         CV_Error(CV_StsUnsupportedFormat,"");
