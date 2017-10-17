@@ -2385,7 +2385,7 @@ bool Kernel::run(int dims, size_t _globalsize[], size_t _localsize[],
 bool Kernel::Impl::run(int dims, size_t globalsize[], size_t localsize[],
         bool sync, int64* timeNS, const Queue& q)
 {
-    CV_INSTRUMENT_REGION_OPENCL_RUN(p->name.c_str());
+    CV_INSTRUMENT_REGION_OPENCL_RUN(name.c_str());
 
     if (!handle || isInProgress)
         return false;
@@ -2402,7 +2402,7 @@ bool Kernel::Impl::run(int dims, size_t globalsize[], size_t localsize[],
 #if CV_OPENCL_SHOW_RUN_ERRORS
     if (retval != CL_SUCCESS)
     {
-        printf("OpenCL - clEnqueueNDRangeKernel returned error: %d\n%s\n\n", retval, p->kernel_details.c_str());
+        printf("OpenCL - clEnqueueNDRangeKernel returned error: %d\n%s\n\n", retval, kernel_details.c_str());
         fflush(stdout);
     }
 #endif
@@ -2412,7 +2412,7 @@ bool Kernel::Impl::run(int dims, size_t globalsize[], size_t localsize[],
 #if CV_OPENCL_SHOW_RUN_ERRORS
         if (retval != CL_SUCCESS)
         {
-            printf("OpenCL - clFinish returned error: %d\n%s\n\n", retval, p->kernel_details.c_str());
+            printf("OpenCL - clFinish returned error: %d\n%s\n\n", retval, kernel_details.c_str());
             fflush(stdout);
         }
 #endif
