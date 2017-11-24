@@ -410,13 +410,13 @@ CV__DNN_EXPERIMENTAL_NS_BEGIN
          *  @param outputName name for layer which output is needed to get
          *  @details If @p outputName is empty, runs forward pass for the whole network.
          */
-        CV_WRAP void forward(std::vector<Mat>& outputBlobs, const String& outputName = String());
+        CV_WRAP void forward(OutputArrayOfArrays outputBlobs, const String& outputName = String());
 
         /** @brief Runs forward pass to compute outputs of layers listed in @p outBlobNames.
          *  @param outputBlobs contains blobs for first outputs of specified layers.
          *  @param outBlobNames names for layers which outputs are needed to get
          */
-        CV_WRAP void forward(std::vector<Mat>& outputBlobs,
+        CV_WRAP void forward(OutputArrayOfArrays outputBlobs,
                              const std::vector<String>& outBlobNames);
 
         /** @brief Runs forward pass to compute outputs of layers listed in @p outBlobNames.
@@ -644,10 +644,32 @@ CV__DNN_EXPERIMENTAL_NS_BEGIN
       */
     CV_EXPORTS_W Net readNetFromCaffe(const String &prototxt, const String &caffeModel = String());
 
+    /** @brief Reads a network model stored in Caffe model in memory.
+      * @details This is an overloaded member function, provided for convenience.
+      * It differs from the above function only in what argument(s) it accepts.
+      * @param bufferProto buffer containing the content of the .prototxt file
+      * @param lenProto length of bufferProto
+      * @param bufferModel buffer containing the content of the .caffemodel file
+      * @param lenModel length of bufferModel
+      */
+    CV_EXPORTS Net readNetFromCaffe(const char *bufferProto, size_t lenProto,
+                                    const char *bufferModel = NULL, size_t lenModel = 0);
+
     /** @brief Reads a network model stored in Tensorflow model file.
       * @details This is shortcut consisting from createTensorflowImporter and Net::populateNet calls.
       */
     CV_EXPORTS_W Net readNetFromTensorflow(const String &model, const String &config = String());
+
+    /** @brief Reads a network model stored in Tensorflow model in memory.
+      * @details This is an overloaded member function, provided for convenience.
+      * It differs from the above function only in what argument(s) it accepts.
+      * @param bufferModel buffer containing the content of the pb file
+      * @param lenModel length of bufferModel
+      * @param bufferConfig buffer containing the content of the pbtxt file
+      * @param lenConfig length of bufferConfig
+      */
+    CV_EXPORTS Net readNetFromTensorflow(const char *bufferModel, size_t lenModel,
+                                         const char *bufferConfig = NULL, size_t lenConfig = 0);
 
     /** @brief Reads a network model stored in Torch model file.
       * @details This is shortcut consisting from createTorchImporter and Net::populateNet calls.

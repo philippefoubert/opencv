@@ -279,6 +279,16 @@ struct DataLayer : public Layer
         outNames.assign(names.begin(), names.end());
     }
 
+    bool getMemoryShapes(const std::vector<MatShape> &inputs,
+                         const int requiredOutputs,
+                         std::vector<MatShape> &outputs,
+                         std::vector<MatShape> &internals) const
+    {
+        CV_Assert(inputs.size() == requiredOutputs);
+        outputs.assign(inputs.begin(), inputs.end());
+        return false;
+    }
+
 private:
     std::vector<String> outNames;
 };
@@ -1233,12 +1243,13 @@ struct Net::Impl
                     }
                 }
 
-                // For now,  OpenCL target only support fusion with activation of ReLU/ChannelsPReLU
+                // For now,  OpenCL target only support fusion with activation of ReLU/ChannelsPReLU/Power
                 if ( preferableTarget != DNN_TARGET_OPENCL ||
                         (preferableTarget == DNN_TARGET_OPENCL &&
                          nextData &&
                         (!nextData->type.compare("ReLU") ||
-                         !nextData->type.compare("ChannelsPReLU"))) )
+                         !nextData->type.compare("ChannelsPReLU") ||
+                         !nextData->type.compare("Power"))) )
                 {
 
                     Ptr<ActivationLayer> nextActivLayer;
@@ -1253,6 +1264,78 @@ struct Net::Impl
                         printf_(("\tfused with %s\n", nextActivLayer->name.c_str()));
                         activData->skipFlags[DNN_BACKEND_DEFAULT] = true;
                         ld.outputBlobs = layers[lpNext.lid].outputBlobs;
+
+                        if ( preferableTarget == DNN_TARGET_OPENCL )
+                        {
+                            nextData = &layers[activData->consumers[0].lid];
+                            lpNext = LayerPin(activData->consumers[0].lid, 0);
+                        }
+                    }
+                }
+
+                // fuse convlution layer followed by eltwise + relu
+                if ( preferableTarget == DNN_TARGET_OPENCL )
+                {
+                    Ptr<EltwiseLayer> nextEltwiseLayer;
+                    if( nextData )
+                        nextEltwiseLayer = nextData->layerInstance.dynamicCast<EltwiseLayer>();
+
+                    if( !nextEltwiseLayer.empty() && pinsToKeep.count(lpNext) == 0 )
+                    {
+                        LayerData *eltwiseData = nextData;
+                        // go down from the second input and find the first non-skipped layer.
+                        LayerData *downLayerData = &layers[eltwiseData->inputBlobsId[1].lid];
+                        while (downLayerData->skipFlags[DNN_BACKEND_DEFAULT])
+                        {
+                            downLayerData = &layers[downLayerData->inputBlobsId[0].lid];
+                        }
+
+                        // second input layer is current layer.
+                        if ( ld.id == downLayerData->id )
+                        {
+                            // go down from the first input and find the first non-skipped layer
+                            downLayerData = &layers[eltwiseData->inputBlobsId[0].lid];
+                            while (downLayerData->skipFlags[DNN_BACKEND_DEFAULT])
+                            {
+                                if ( !downLayerData->type.compare("Eltwise") )
+                                    downLayerData = &layers[downLayerData->inputBlobsId[1].lid];
+                                else
+                                    downLayerData = &layers[downLayerData->inputBlobsId[0].lid];
+                            }
+
+                            Ptr<ConvolutionLayer> convLayer;
+                            if( downLayerData )
+                                convLayer = downLayerData->layerInstance.dynamicCast<ConvolutionLayer>();
+
+                            //  first input layer is convolution layer
+                            if( !convLayer.empty() )
+                            {
+                                // fuse eltwise + activation layer
+                                LayerData *firstConvLayerData = downLayerData;
+                                {
+                                    nextData = &layers[eltwiseData->consumers[0].lid];
+                                    lpNext = LayerPin(eltwiseData->consumers[0].lid, 0);
+                                    Ptr<ActivationLayer> nextActivLayer;
+                                    if( nextData )
+                                        nextActivLayer = nextData->layerInstance.dynamicCast<ActivationLayer>();
+
+                                    if( !nextActivLayer.empty() && pinsToKeep.count(lpNext) == 0 &&
+                                            (!nextData->type.compare("ReLU") ||
+                                             !nextData->type.compare("ChannelsPReLU") ||
+                                             !nextData->type.compare("Power")) &&
+                                            currLayer->setActivation(nextActivLayer) )
+                                    {
+                                        CV_Assert(firstConvLayerData->outputBlobs.size() == 1 && ld.inputBlobs.size() == 1);
+                                        ld.inputBlobs.push_back(&firstConvLayerData->outputBlobs[0]);
+                                        printf_(("\tfused with %s\n", nextEltwiseLayer->name.c_str()));
+                                        printf_(("\tfused with %s\n", nextActivLayer->name.c_str()));
+                                        eltwiseData->skipFlags[DNN_BACKEND_DEFAULT] = true;
+                                        nextData->skipFlags[DNN_BACKEND_DEFAULT] = true;
+                                        ld.outputBlobs = layers[lpNext.lid].outputBlobs;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1312,7 +1395,7 @@ struct Net::Impl
                                layers[ld.inputBlobsId[i].lid].getLayerInstance()->name.c_str(),
                                inp_i_data->getLayerInstance()->name.c_str()));
 
-                        if(inp_i_data->skipFlags[DNN_BACKEND_DEFAULT])
+                        if(inp_i_data->skipFlags[DNN_BACKEND_DEFAULT] || inp_i_data->consumers.size() != 1)
                             break;
                         realinputs[i] = pin;
                     }
@@ -1334,6 +1417,14 @@ struct Net::Impl
                             Mat& curr_output = inp_i_data->outputBlobs[pin.oid];
                             CV_Assert(output_slice.isContinuous() && output_slice.size == curr_output.size);
                             curr_output = output_slice;
+
+                            pin = ld.inputBlobsId[i];
+                            inp_i_data = &layers[pin.lid];
+                            for (int j = 0; j < inp_i_data->consumers.size(); ++j)
+                            {
+                                LayerPin consumer = inp_i_data->consumers[j];
+                                layers[consumer.lid].inputBlobs[consumer.oid] = &curr_output;
+                            }
                         }
                         ld.skipFlags[DNN_BACKEND_DEFAULT] = true;
                         printf_(("\toptimized out Concat layer %s\n", concatLayer->name.c_str()));
@@ -1365,7 +1456,9 @@ struct Net::Impl
         blobManager.setPreferableTarget(preferableTarget);
         blobManager.setPreferableBackend(preferableBackend);
         backendWrappers.clear();
-        blobManager.addReference(LayerPin(0, 0));
+        // Fake references to input blobs.
+        for (int i = 0; i < layers[0].outputBlobs.size(); ++i)
+            blobManager.addReference(LayerPin(0, i));
         for (it = layers.begin(); it != layers.end(); ++it)
         {
             const LayerData& ld = it->second;
@@ -1545,7 +1638,7 @@ struct Net::Impl
             CV_Error(Error::StsOutOfRange, "Layer \"" + ld.name + "\" produce only " + toString(ld.outputBlobs.size()) +
                                            " outputs, the #" + toString(pin.oid) + " was requsted");
         }
-        if (preferableBackend != DNN_TARGET_CPU)
+        if (preferableBackend != DNN_BACKEND_DEFAULT)
         {
             // Transfer data to CPU if it's require.
             ld.outputBlobsWrappers[pin.oid]->copyToHost();
@@ -1561,9 +1654,34 @@ struct Net::Impl
         return ld.outputBlobs[pin.oid];
     }
 
+    void getBlob(UMat& umat, const LayerPin& pin)
+    {
+        CV_TRACE_FUNCTION();
+
+        if (!pin.valid())
+            CV_Error(Error::StsObjectNotFound, "Requested blob not found");
+
+        LayerData &ld = layers[pin.lid];
+        if ((size_t)pin.oid >= ld.outputBlobs.size())
+        {
+            CV_Error(Error::StsOutOfRange, "Layer \"" + ld.name + "\" produce only " + toString(ld.outputBlobs.size()) +
+                                           " outputs, the #" + toString(pin.oid) + " was requsted");
+        }
+
+        if (ld.umat_outputBlobs.size() > 0 && !ld.umat_outputBlobs[pin.oid].empty())
+            umat = ld.umat_outputBlobs[pin.oid];
+        else
+            umat = UMat();
+    }
+
     Mat getBlob(String outputName)
     {
         return getBlob(getPinByAlias(outputName));
+    }
+
+    void getBlob(UMat& umat, String outputName)
+    {
+        getBlob(umat, getPinByAlias(outputName));
     }
 };
 
@@ -1642,7 +1760,7 @@ Mat Net::forward(const String& outputName)
     return impl->getBlob(layerName);
 }
 
-void Net::forward(std::vector<Mat>& outputBlobs, const String& outputName)
+void Net::forward(OutputArrayOfArrays outputBlobs, const String& outputName)
 {
     CV_TRACE_FUNCTION();
 
@@ -1658,16 +1776,40 @@ void Net::forward(std::vector<Mat>& outputBlobs, const String& outputName)
     LayerPin pin = impl->getPinByAlias(layerName);
     LayerData &ld = impl->layers[pin.lid];
 
-    if (ld.umat_outputBlobs.size() > 0)
+    if (outputBlobs.isUMat())
     {
-        for (int i = 0; i < ld.umat_outputBlobs.size(); i++)
-            ld.umat_outputBlobs[i].copyTo(ld.outputBlobs[i]);
+        if (ld.umat_outputBlobs.size() > 0)
+        {
+            UMat umat;
+            impl->getBlob(umat, layerName);
+            outputBlobs.assign(umat);
+        }
     }
-
-    outputBlobs = ld.outputBlobs;
+    else if (outputBlobs.isMat())
+    {
+        outputBlobs.assign(impl->getBlob(layerName));
+    }
+    else if (outputBlobs.isMatVector())
+    {
+        if (ld.umat_outputBlobs.size() > 0)
+        {
+            for (int i = 0; i < ld.umat_outputBlobs.size(); i++)
+                ld.umat_outputBlobs[i].copyTo(ld.outputBlobs[i]);
+        }
+        std::vector<Mat> & outputvec = *(std::vector<Mat> *)outputBlobs.getObj();
+        outputvec = ld.outputBlobs;
+    }
+    else if (outputBlobs.isUMatVector())
+    {
+        if (ld.umat_outputBlobs.size() > 0)
+        {
+            std::vector<UMat> & outputvec = *(std::vector<UMat> *)outputBlobs.getObj();
+            outputvec = ld.umat_outputBlobs;
+        }
+    }
 }
 
-void Net::forward(std::vector<Mat>& outputBlobs,
+void Net::forward(OutputArrayOfArrays outputBlobs,
                   const std::vector<String>& outBlobNames)
 {
     CV_TRACE_FUNCTION();
@@ -1675,7 +1817,7 @@ void Net::forward(std::vector<Mat>& outputBlobs,
     std::vector<LayerPin> pins;
     for (int i = 0; i < outBlobNames.size(); i++)
     {
-       pins.push_back(impl->getPinByAlias(outBlobNames[i]));
+        pins.push_back(impl->getPinByAlias(outBlobNames[i]));
     }
 
     impl->setUpNet(pins);
@@ -1684,11 +1826,14 @@ void Net::forward(std::vector<Mat>& outputBlobs,
 
     impl->forwardToLayer(impl->getLayerData(out.lid));
 
-    outputBlobs.clear();
+    std::vector<Mat> matvec;
     for (int i = 0; i < pins.size(); i++)
     {
-        outputBlobs.push_back(impl->getBlob(pins[i]));
+        matvec.push_back(impl->getBlob(pins[i]));
     }
+
+    std::vector<Mat> & outputvec = *(std::vector<Mat> *)outputBlobs.getObj();
+    outputvec = matvec;
 }
 
 void Net::forward(std::vector<std::vector<Mat> >& outputBlobs,
@@ -2308,6 +2453,10 @@ void Layer::forward_fallback(InputArrayOfArrays inputs_arr, OutputArrayOfArrays 
         inputs[i] = &inpvec[i];
 
     this->forward(inputs, outputs, internals);
+
+    // sync results back
+    outputs_arr.assign(outputs);
+    internals_arr.assign(internals);
 }
 
 void Layer::run(const std::vector<Mat> &inputs, std::vector<Mat> &outputs, std::vector<Mat> &internals)

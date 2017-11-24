@@ -52,12 +52,21 @@
 #elif defined(FUSED_CONV_PRELU)
 #define ACTIVATION_RELU_FUNCTION(x, c) ((Dtype)(x) > 0 ? (Dtype)(x) : ((Dtype)(x) * (Dtype)(negative_slope[c])))
 #define NEGATIVE_SLOPE_ARG __global const Dtype *negative_slope,
+#elif defined(FUSED_CONV_POWER)
+#define ACTIVATION_RELU_FUNCTION(x, c) pow(x, power)
+#define NEGATIVE_SLOPE_ARG Dtype power,
 #else
 #define ACTIVATION_RELU_FUNCTION(x, c) (x)
 #define NEGATIVE_SLOPE_ARG
 #endif
 
+#ifdef FUSED_CONV_ELTWISE
+#define ACTIVATION_FUNCTION(_dst_, _offset_, _data_, _channel_) do { (_dst_)[(_offset_)] = ACTIVATION_RELU_FUNCTION(eltwise_data[(_offset_)] + (_data_), _channel_);} while(0)
+#define ELTWISE_DATA_ARG __global Dtype* eltwise_data,
+#else
 #define ACTIVATION_FUNCTION(_dst_, _offset_, _data_, _channel_) do { (_dst_)[(_offset_)] = ACTIVATION_RELU_FUNCTION(_data_, _channel_);} while(0)
+#define ELTWISE_DATA_ARG
+#endif
 
 
 #define __CAT(x, y) x##y
@@ -82,7 +91,6 @@
 #define LOOP(N, VAR, STMT) CAT(LOOP, N)((VAR), (STMT))
 
 #if defined(convolve_simd) || defined(Conv_Interleaved)
-#if Dtype_SIZE == 4
 #define INT_TYPE uint
 #define INT_TYPE2 uint2
 #define INT_TYPE4 uint4
@@ -91,14 +99,12 @@
 #define SUB_GROUP_BLOCK_READ4 intel_sub_group_block_read4
 #define SUB_GROUP_BLOCK_READ8 intel_sub_group_block_read8
 #define SUB_GROUP_BLOCK_READ intel_sub_group_block_read
-#else
-#error "Unsupported type"
-#endif
 #endif
 
 #ifdef KERNEL_BASIC
 
 __kernel void ConvolveBasic(
+    ELTWISE_DATA_ARG
     NEGATIVE_SLOPE_ARG
     __global Dtype* image_data,
     int image_offset,
@@ -176,11 +182,7 @@ __kernel void ConvolveBasic(
 
 #elif defined KERNEL_IDLF
 
-#if TYPE == TYPE_HALF
-#define VLOAD4(_v, _p) do { (_v).s0 = *(_p); (_v).s1 = *(_p + 1); (_v).s2 = *(_p + 2); (_v).s3 = *(_p + 3); } while(0)
-#else
 #define VLOAD4(_v, _p) do { _v = vload4(0, _p); } while(0)
-#endif
 
 // Each work-item computes a OUT_BLOCK_WIDTH * OUT_BLOCK_HEIGHT region of one output map.
 // Each work-group (which will be mapped to 1 SIMD16/SIMD8 EU thread) will compute 16/8 different feature maps, but each feature map is for the same region of the imput image.
@@ -193,6 +195,7 @@ __attribute__((intel_reqd_sub_group_size(SIMD_SIZE)))
 #endif
 __kernel void
 convolve_simd(
+    ELTWISE_DATA_ARG
     NEGATIVE_SLOPE_ARG
     __global Dtype* inputs_base,
     filter_qualifier Dtype* weights_base,
@@ -413,6 +416,7 @@ typedef struct float0 { float s0; } float0; //never used but makes compiler happ
 #define ROW_PITCH input_width
 
 #define GEMM_LIKE_KERNEL_ARGS     \
+    ELTWISE_DATA_ARG              \
     NEGATIVE_SLOPE_ARG            \
     const __global Dtype *src0,   \
     const __global Dtype *src1,   \

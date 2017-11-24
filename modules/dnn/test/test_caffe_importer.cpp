@@ -55,6 +55,24 @@ static std::string _tf(TString filename)
     return (getOpenCVExtraDir() + "/dnn/") + filename;
 }
 
+TEST(Test_Caffe, memory_read)
+{
+    const string proto = findDataFile("dnn/bvlc_googlenet.prototxt", false);
+    const string model = findDataFile("dnn/bvlc_googlenet.caffemodel", false);
+
+    string dataProto;
+    ASSERT_TRUE(readFileInMemory(proto, dataProto));
+    string dataModel;
+    ASSERT_TRUE(readFileInMemory(model, dataModel));
+
+    Net net = readNetFromCaffe(dataProto.c_str(), dataProto.size());
+    ASSERT_FALSE(net.empty());
+
+    Net net2 = readNetFromCaffe(dataProto.c_str(), dataProto.size(),
+                                dataModel.c_str(), dataModel.size());
+    ASSERT_FALSE(net2.empty());
+}
+
 TEST(Test_Caffe, read_gtsrb)
 {
     Net net = readNetFromCaffe(_tf("gtsrb.prototxt"));
@@ -67,13 +85,26 @@ TEST(Test_Caffe, read_googlenet)
     ASSERT_FALSE(net.empty());
 }
 
-TEST(Reproducibility_AlexNet, Accuracy)
+typedef testing::TestWithParam<tuple<bool> > Reproducibility_AlexNet;
+TEST_P(Reproducibility_AlexNet, Accuracy)
 {
+    bool readFromMemory = get<0>(GetParam());
     Net net;
     {
         const string proto = findDataFile("dnn/bvlc_alexnet.prototxt", false);
         const string model = findDataFile("dnn/bvlc_alexnet.caffemodel", false);
-        net = readNetFromCaffe(proto, model);
+        if (readFromMemory)
+        {
+            string dataProto;
+            ASSERT_TRUE(readFileInMemory(proto, dataProto));
+            string dataModel;
+            ASSERT_TRUE(readFileInMemory(model, dataModel));
+
+            net = readNetFromCaffe(dataProto.c_str(), dataProto.size(),
+                                   dataModel.c_str(), dataModel.size());
+        }
+        else
+            net = readNetFromCaffe(proto, model);
         ASSERT_FALSE(net.empty());
     }
 
@@ -85,6 +116,8 @@ TEST(Reproducibility_AlexNet, Accuracy)
     Mat ref = blobFromNPY(_tf("caffe_alexnet_prob.npy"));
     normAssert(ref, out);
 }
+
+INSTANTIATE_TEST_CASE_P(Test_Caffe, Reproducibility_AlexNet, testing::Values(true, false));
 
 #if !defined(_WIN32) || defined(_WIN64)
 TEST(Reproducibility_FCN, Accuracy)
@@ -278,6 +311,33 @@ TEST(Reproducibility_DenseNet_121, Accuracy)
     Mat out = net.forward();
 
     normAssert(out, ref);
+}
+
+TEST(Test_Caffe, multiple_inputs)
+{
+    const string proto = findDataFile("dnn/layers/net_input.prototxt", false);
+    Net net = readNetFromCaffe(proto);
+
+    Mat first_image(10, 11, CV_32FC3);
+    Mat second_image(10, 11, CV_32FC3);
+    randu(first_image, -1, 1);
+    randu(second_image, -1, 1);
+
+    first_image = blobFromImage(first_image);
+    second_image = blobFromImage(second_image);
+
+    Mat first_image_blue_green = slice(first_image, Range::all(), Range(0, 2), Range::all(), Range::all());
+    Mat first_image_red = slice(first_image, Range::all(), Range(2, 3), Range::all(), Range::all());
+    Mat second_image_blue_green = slice(second_image, Range::all(), Range(0, 2), Range::all(), Range::all());
+    Mat second_image_red = slice(second_image, Range::all(), Range(2, 3), Range::all(), Range::all());
+
+    net.setInput(first_image_blue_green, "old_style_input_blue_green");
+    net.setInput(first_image_red, "different_name_for_red");
+    net.setInput(second_image_blue_green, "input_layer_blue_green");
+    net.setInput(second_image_red, "old_style_input_red");
+    Mat out = net.forward();
+
+    normAssert(out, first_image + second_image);
 }
 
 }
