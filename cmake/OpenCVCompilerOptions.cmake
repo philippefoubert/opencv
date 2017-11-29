@@ -131,6 +131,9 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     add_extra_compiler_option(-Wno-unnamed-type-template-args)
     add_extra_compiler_option(-Wno-comment)
     add_extra_compiler_option(-Wno-implicit-fallthrough)
+    if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 7.2.0)
+      add_extra_compiler_option(-Wno-strict-overflow) # Issue is fixed in GCC 7.2.1
+    endif()
   endif()
   add_extra_compiler_option(-fdiagnostics-show-option)
 
@@ -163,7 +166,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   # Other optimizations
   if(ENABLE_OMIT_FRAME_POINTER)
     add_extra_compiler_option(-fomit-frame-pointer)
-  else()
+  elseif(DEFINED ENABLE_OMIT_FRAME_POINTER)
     add_extra_compiler_option(-fno-omit-frame-pointer)
   endif()
   if(ENABLE_FAST_MATH)
