@@ -4356,9 +4356,6 @@ public:
 
 
 
-#if defined _MSC_VER
-#pragma warning(disable:4127) // conditional expression is constant
-#endif
 template <bool readAccess, bool writeAccess>
 class AlignedDataPtr
 {
@@ -4463,9 +4460,6 @@ private:
     AlignedDataPtr2D(const AlignedDataPtr2D&); // disabled
     AlignedDataPtr2D& operator=(const AlignedDataPtr2D&); // disabled
 };
-#if defined _MSC_VER
-#pragma warning(default:4127) // conditional expression is constant
-#endif
 
 #ifndef CV_OPENCL_DATA_PTR_ALIGNMENT
 #define CV_OPENCL_DATA_PTR_ALIGNMENT 16
