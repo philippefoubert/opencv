@@ -16,7 +16,9 @@ endif()
 
 ocv_warnings_disable(CMAKE_CXX_FLAGS -Wundef)
 
-ocv_add_module(ts INTERNAL opencv_core opencv_imgproc opencv_imgcodecs opencv_videoio opencv_highgui)
+# To keep opencv_ts in the regular public modules list, remove the "INTERNAL" qualifier:
+# ocv_add_module(ts INTERNAL opencv_core opencv_imgproc opencv_imgcodecs opencv_videoio opencv_highgui)
+ocv_add_module(ts opencv_core opencv_imgproc opencv_imgcodecs opencv_videoio opencv_highgui)
 
 ocv_glob_module_sources()
 ocv_module_include_directories()
