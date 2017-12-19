@@ -7,6 +7,7 @@ project(${TIFF_LIBRARY})
 include(CheckCSourceCompiles)
 include(CheckFunctionExists)
 include(CheckIncludeFile)
+include(CheckTypeSize)
 
 
 # Find libm, if available
@@ -34,31 +35,27 @@ if(NOT MSVC)
   check_include_file(unistd.h    HAVE_UNISTD_H)
 endif()
 
-if(MSVC)
-  set(INLINE_KEYWORD "inline")
-else()
-  # Inspired from /usr/share/autoconf/autoconf/c.m4
-  foreach(inline_keyword "inline" "__inline__" "__inline")
-    if(NOT DEFINED C_INLINE)
-      set(CMAKE_REQUIRED_DEFINITIONS_SAVE ${CMAKE_REQUIRED_DEFINITIONS})
-      set(CMAKE_REQUIRED_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS}
-          "-Dinline=${inline_keyword}")
-      check_c_source_compiles("
-          typedef int foo_t;
-          static inline foo_t static_foo() {return 0;}
-          foo_t foo(){return 0;}
-          int main(int argc, char *argv[]) {return 0;}"
-        C_HAS_${inline_keyword})
-      set(CMAKE_REQUIRED_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS_SAVE})
-      if(C_HAS_${inline_keyword})
-        set(C_INLINE TRUE)
-        set(INLINE_KEYWORD "${inline_keyword}")
-      endif()
-   endif()
-  endforeach()
+# Inspired from /usr/share/autoconf/autoconf/c.m4
+foreach(inline_keyword "inline" "__inline__" "__inline")
   if(NOT DEFINED C_INLINE)
-    set(INLINE_KEYWORD)
-  endif()
+    set(CMAKE_REQUIRED_DEFINITIONS_SAVE ${CMAKE_REQUIRED_DEFINITIONS})
+    set(CMAKE_REQUIRED_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS}
+        "-Dinline=${inline_keyword}")
+    check_c_source_compiles("
+        typedef int foo_t;
+        static inline foo_t static_foo() {return 0;}
+        foo_t foo(){return 0;}
+        int main(int argc, char *argv[]) {return 0;}"
+      C_HAS_${inline_keyword})
+    set(CMAKE_REQUIRED_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS_SAVE})
+    if(C_HAS_${inline_keyword})
+      set(C_INLINE TRUE)
+      set(INLINE_KEYWORD "${inline_keyword}")
+    endif()
+ endif()
+endforeach()
+if(NOT DEFINED C_INLINE)
+  set(INLINE_KEYWORD)
 endif()
 
 
@@ -413,6 +410,7 @@ set(lib_srcs
     tif_write.c
     tif_zip.c
     tif_stream.cxx
+	snprintf.c
     t4.h
     tif_dir.h
     tif_fax3.h
@@ -448,10 +446,6 @@ ocv_warnings_disable(CMAKE_CXX_FLAGS /wd4703) # vs2012
 ocv_warnings_disable(CMAKE_CXX_FLAGS /wd4456 /wd4457 /wd4312) # vs2015
 
 ocv_warnings_disable(CMAKE_C_FLAGS /wd4267 /wd4244 /wd4018 /wd4311 /wd4312)
-
-if(UNIX AND (CMAKE_COMPILER_IS_GNUCXX OR CV_ICC))
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-endif()
 
 add_library(${TIFF_LIBRARY} STATIC ${lib_srcs})
 target_link_libraries(${TIFF_LIBRARY} ${ZLIB_LIBRARIES})
