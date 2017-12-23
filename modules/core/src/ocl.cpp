@@ -154,6 +154,8 @@ struct DummyImpl
 #define CV_OCL_DBG_CHECK_(expr, check_result) expr; (void)check_result
 #define CV_OCL_DBG_CHECK(expr) do { cl_int __cl_result = (expr); CV_OCL_CHECK_RESULT(__cl_result, #expr); } while (0)
 
+static const bool CV_OPENCL_DISABLE_BUFFER_RECT_OPERATIONS = false;
+
 #else // HAVE_OPENCL
 
 #ifndef _DEBUG
@@ -227,6 +229,15 @@ static const bool CV_OPENCL_CACHE_CLEANUP = utils::getConfigurationParameterBool
 #if CV_OPENCL_VALIDATE_BINARY_PROGRAMS
 static const bool CV_OPENCL_VALIDATE_BINARY_PROGRAMS_VALUE = utils::getConfigurationParameterBool("OPENCV_OPENCL_VALIDATE_BINARY_PROGRAMS", false);
 #endif
+
+// Option to disable calls clEnqueueReadBufferRect / clEnqueueWriteBufferRect / clEnqueueCopyBufferRect
+static const bool CV_OPENCL_DISABLE_BUFFER_RECT_OPERATIONS = utils::getConfigurationParameterBool("OPENCV_OPENCL_DISABLE_BUFFER_RECT_OPERATIONS",
+#ifdef __APPLE__
+        true
+#else
+        false
+#endif
+);
 
 #endif // HAVE_OPENCL
 
@@ -5223,8 +5234,7 @@ public:
                 CV_OCL_CHECK(clEnqueueReadBuffer(q, (cl_mem)u->handle, CL_TRUE,
                     srcrawofs, total, alignedPtr.getAlignedPtr(), 0, 0, 0));
             }
-#ifdef __APPLE__
-            else
+            else if (CV_OPENCL_DISABLE_BUFFER_RECT_OPERATIONS)
             {
                 const size_t padding = CV_OPENCL_DATA_PTR_ALIGNMENT;
                 size_t new_srcrawofs = srcrawofs & ~(padding-1);
@@ -5241,7 +5251,6 @@ public:
                 for( size_t i = 0; i < new_sz[1]; i++ )
                     memcpy( (uchar*)dstptr + i*new_dststep[0], ptr + i*new_srcstep[0] + membuf_ofs, new_sz[0]);
             }
-#else
             else
             {
                 AlignedDataPtr2D<false, true> alignedPtr((uchar*)dstptr, new_sz[1], new_sz[0], new_dststep[0], CV_OPENCL_DATA_PTR_ALIGNMENT);
@@ -5253,7 +5262,6 @@ public:
                     new_dststep[0], 0,
                     ptr, 0, 0, 0));
             }
-#endif
         }
     }
 
@@ -5360,8 +5368,7 @@ public:
                 CV_OCL_CHECK(clEnqueueWriteBuffer(q, (cl_mem)u->handle, CL_TRUE,
                     dstrawofs, total, alignedPtr.getAlignedPtr(), 0, 0, 0));
             }
-#ifdef __APPLE__
-            else
+            else if (CV_OPENCL_DISABLE_BUFFER_RECT_OPERATIONS)
             {
                 const size_t padding = CV_OPENCL_DATA_PTR_ALIGNMENT;
                 size_t new_dstrawofs = dstrawofs & ~(padding-1);
@@ -5383,7 +5390,6 @@ public:
                 CV_OCL_CHECK(clEnqueueWriteBuffer(q, (cl_mem)u->handle, CL_TRUE,
                                                  new_dstrawofs, total, ptr, 0, 0, 0));
             }
-#else
             else
             {
                 AlignedDataPtr2D<true, false> alignedPtr((uchar*)srcptr, new_sz[1], new_sz[0], new_srcstep[0], CV_OPENCL_DATA_PTR_ALIGNMENT);
@@ -5395,7 +5401,6 @@ public:
                     new_srcstep[0], 0,
                     ptr, 0, 0, 0));
             }
-#endif
         }
         u->markHostCopyObsolete(true);
 #ifdef HAVE_OPENCL_SVM
@@ -5537,8 +5542,7 @@ public:
                 CV_OCL_CHECK(retval = clEnqueueCopyBuffer(q, (cl_mem)src->handle, (cl_mem)dst->handle,
                                                srcrawofs, dstrawofs, total, 0, 0, 0));
             }
-#ifdef __APPLE__
-            else
+            else if (CV_OPENCL_DISABLE_BUFFER_RECT_OPERATIONS)
             {
                 const size_t padding = CV_OPENCL_DATA_PTR_ALIGNMENT;
                 size_t new_srcrawofs = srcrawofs & ~(padding-1);
@@ -5571,7 +5575,6 @@ public:
                 CV_OCL_CHECK(clEnqueueWriteBuffer(q, (cl_mem)dst->handle, CL_TRUE,
                                                   new_dstrawofs, dst_total, dstptr, 0, 0, 0));
             }
-#else
             else
             {
                 CV_OCL_CHECK(retval = clEnqueueCopyBufferRect(q, (cl_mem)src->handle, (cl_mem)dst->handle,
@@ -5580,7 +5583,6 @@ public:
                                                    new_dststep[0], 0,
                                                    0, 0, 0));
             }
-#endif
         }
         if (retval == CL_SUCCESS)
         {
