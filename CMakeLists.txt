@@ -314,6 +314,7 @@ OCV_OPTION(ENABLE_INSTRUMENTATION     "Instrument functions to collect calls tra
 OCV_OPTION(ENABLE_GNU_STL_DEBUG       "Enable GNU STL Debug mode (defines _GLIBCXX_DEBUG)"       OFF IF ((NOT CMAKE_VERSION VERSION_LESS "2.8.11") AND CMAKE_COMPILER_IS_GNUCXX) )
 OCV_OPTION(ENABLE_BUILD_HARDENING     "Enable hardening of the resulting binaries (against security attacks, detects memory corruption, etc)" OFF)
 OCV_OPTION(ENABLE_LTO                 "Enable Link Time Optimization" OFF IF CMAKE_COMPILER_IS_GNUCXX OR MSVC)
+OCV_OPTION(ENABLE_THIN_LTO            "Enable Thin LTO" OFF IF CMAKE_COMPILER_IS_CLANGCXX)
 OCV_OPTION(GENERATE_ABI_DESCRIPTOR    "Generate XML file for abi_compliance_checker tool" OFF IF UNIX)
 OCV_OPTION(CV_ENABLE_INTRINSICS       "Use intrinsic-based optimized code" ON )
 OCV_OPTION(CV_DISABLE_OPTIMIZATION    "Disable explicit optimized code (dispatched code/intrinsics/loop unrolling/etc)" OFF )
@@ -458,6 +459,14 @@ if(INSTALL_TO_MANGLED_PATHS)
   endforeach()
 endif()
 
+if(ANDROID)
+  ocv_update(OPENCV_JNI_INSTALL_PATH "${OPENCV_LIB_INSTALL_PATH}")
+elseif(INSTALL_CREATE_DISTRIB)
+  ocv_update(OPENCV_JNI_INSTALL_PATH "${OPENCV_JAR_INSTALL_PATH}/${OpenCV_ARCH}")
+else()
+  ocv_update(OPENCV_JNI_INSTALL_PATH "${OPENCV_JAR_INSTALL_PATH}")
+endif()
+ocv_update(OPENCV_JNI_BIN_INSTALL_PATH "${OPENCV_JNI_INSTALL_PATH}")
 
 if(WIN32)
   # Postfix of DLLs:
@@ -608,6 +617,7 @@ include(cmake/OpenCVFindLAPACK.cmake)
 # ----------------------------------------------------------------------------
 
 # --- Doxygen for documentation ---
+add_custom_target(opencv_docs ALL)
 if(BUILD_DOCS)
   find_package(Doxygen)
 else()
