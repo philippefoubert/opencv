@@ -126,6 +126,8 @@
 #include "opencv2/core/opencl/opencl_svm.hpp"
 #endif
 
+#include "umatrix.hpp"
+
 namespace cv { namespace ocl {
 
 #define IMPLEMENT_REFCOUNTABLE() \
@@ -5441,8 +5443,7 @@ public:
                                             srcrawofs, new_srcofs, new_srcstep,
                                             dstrawofs, new_dstofs, new_dststep);
 
-        UMatDataAutoLock src_autolock(src);
-        UMatDataAutoLock dst_autolock(dst);
+        UMatDataAutoLock src_autolock(src, dst);
 
         if( !src->handle || (src->data && src->hostCopyObsolete() < src->deviceCopyObsolete()) )
         {
