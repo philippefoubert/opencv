@@ -32,6 +32,8 @@ public:
 
         hasWeights = params.get<bool>("has_weight", false);
         hasBias = params.get<bool>("has_bias", false);
+        if(params.get<bool>("scale_bias", false))
+            hasWeights = hasBias = true;
         epsilon = params.get<float>("eps", 1E-5);
 
         size_t n = blobs[0].total();
@@ -47,8 +49,8 @@ public:
                 varMeanScale = 1/varMeanScale;
         }
 
-        const int weightsBlobIndex = 2;
-        const int biasBlobIndex = weightsBlobIndex + hasWeights;
+        const int biasBlobIndex = blobs.size() - 1;
+        const int weightsBlobIndex = biasBlobIndex - hasBias;
 
         if( hasWeights )
         {
@@ -144,7 +146,7 @@ public:
                 UMat src = inputs[ii].reshape(1, s.size(), &s[0]);
                 UMat dst = outputs[ii].reshape(1, s.size(), &s[0]);
                 int number = (s[1] % 8 == 0) ? 8 : ((s[1] % 4 == 0) ? 4 : 1);
-                String buildopt = format("-DNUM=%d ", number);
+                String buildopt = format("-DNUM=%d", number);
                 String kname = format("batch_norm%d", number);
                 ocl::Kernel kernel(kname.c_str(), ocl::dnn::batchnorm_oclsrc, buildopt);
                 if (kernel.empty())
