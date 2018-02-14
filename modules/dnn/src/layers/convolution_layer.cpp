@@ -824,6 +824,13 @@ public:
         for (int i = 0; i < inputs.size(); ++i)
             CV_Assert(inputs[i].u != outputs[0].u);
 
+        int inpH = inputs[0].size[2];
+        int inpW = inputs[0].size[3];
+        int out_h = (inpH + 2 * pad.height - (dilation.height * (kernel.height - 1) + 1)) / stride.height + 1;
+        int out_w = (inpW + 2 * pad.width - (dilation.width * (kernel.width - 1) + 1)) / stride.width + 1;
+        if (out_h != outputs[0].size[2] || out_w != outputs[0].size[3])
+            return false;
+
         int group = inputs[0].size[1] / umat_blobs[0].size[1];
 
         if (convolutionOp.empty())
@@ -1025,8 +1032,25 @@ public:
         int inpH = inputs[0][2];
         int inpW = inputs[0][3];
 
-        int outH = stride.height * (inpH - 1) + kernel.height - 2 * pad.height + adjustPad.height;
-        int outW = stride.width * (inpW - 1) + kernel.width - 2 * pad.width + adjustPad.width;
+        int outH = -1, outW = -1;
+        if (padMode.empty())
+        {
+            outH = stride.height * (inpH - 1) + kernel.height - 2 * pad.height + adjustPad.height;
+            outW = stride.width * (inpW - 1) + kernel.width - 2 * pad.width + adjustPad.width;
+        }
+        else if (padMode == "VALID")
+        {
+            outH = stride.height * (inpH - 1) + kernel.height + adjustPad.height;
+            outW = stride.width * (inpW - 1) + kernel.width + adjustPad.width;
+        }
+        else if (padMode == "SAME")
+        {
+            outH = stride.height * (inpH - 1) + 1 + adjustPad.height;
+            outW = stride.width * (inpW - 1) + 1 + adjustPad.width;
+        }
+        else
+            CV_Error(Error::StsError, "Unsupported padding mode " + padMode);
+
         int outCn = numOutput;
 
         CV_Assert(outCn % blobs[0].size[1] == 0);
@@ -1046,6 +1070,14 @@ public:
             internals.push_back(shape(1, outH*outW));
 
         return false;
+    }
+
+    void finalize(const std::vector<Mat*> &inputs, std::vector<Mat> &outputs)
+    {
+        BaseConvolutionLayerImpl::finalize(inputs, outputs);
+        getConvPoolPaddings(Size(outputs[0].size[3], outputs[0].size[2]),
+                            Size(inputs[0]->size[3], inputs[0]->size[2]),
+                            kernel, stride, padMode, dilation, pad);
     }
 
     class MatMulInvoker : public ParallelLoopBody
@@ -1214,6 +1246,7 @@ public:
                         int kernel_h, int kernel_w,
                         int pad_h, int pad_w,
                         int stride_h, int stride_w,
+                        int height_col, int width_col,
                         float* data_im,
                         const float* biasvec,
                         bool is1x1)
@@ -1227,8 +1260,8 @@ public:
             t.kernel_h = kernel_h; t.kernel_w = kernel_w;
             t.pad_h = pad_h; t.pad_w = pad_w;
             t.stride_h = stride_h; t.stride_w = stride_w;
-            t.height_col = (height + 2 * pad_h - kernel_h) / stride_h + 1;
-            t.width_col = (width + 2 * pad_w - kernel_w) / stride_w + 1;
+            t.height_col = height_col;
+            t.width_col = width_col;
             t.nstripes = nstripes;
             t.is1x1 = is1x1;
             t.biasvec = biasvec;
@@ -1418,6 +1451,7 @@ public:
             const Mat& inp = *inputs[ii];
             Mat& out = outputs[ii];
             int numImg = inp.size[0];
+            int inpH = inp.size[2], inpW = inp.size[3];
             int outH = out.size[2], outW = out.size[3];
 
             Mat convBlob = inputs[ii]->reshape(1, numImg*inpCn);
@@ -1440,7 +1474,7 @@ public:
 
                     Col2ImInvoker::run(colMat.ptr<float>(), outGroupCn, outH, outW,
                                        kernel.height, kernel.width, pad.height, pad.width,
-                                       stride.height, stride.width, dstMat.ptr<float>(),
+                                       stride.height, stride.width, inpH, inpW, dstMat.ptr<float>(),
                                        curBiasMat.ptr<float>(), is1x1flag);
                 }
             }

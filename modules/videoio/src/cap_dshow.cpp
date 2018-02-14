@@ -261,7 +261,7 @@ interface ISampleGrabber : public IUnknown
     //optionally setup a second (or third, fourth ...) device - same options as above
     VI.setupDevice(device2);
 
-    //As requested width and height can not always be accomodated
+    //As requested width and height can not always be accommodated
     //make sure to check the size once the device is setup
 
     int width   = VI.getWidth(device1);
@@ -599,7 +599,7 @@ static void MyFreeMediaType(AM_MEDIA_TYPE& mt){
     }
     if (mt.pUnk != NULL)
     {
-        // Unecessary because pUnk should not be used, but safest.
+        // Unnecessary because pUnk should not be used, but safest.
         mt.pUnk->Release();
         mt.pUnk = NULL;
     }
@@ -1296,7 +1296,7 @@ char * videoInput::getDeviceName(int deviceID){
 
 int videoInput::listDevices(bool silent){
 
-    //COM Library Intialization
+    //COM Library Initialization
     comInit();
 
     if(!silent) DebugPrintOut("\nVIDEOINPUT SPY MODE!\n\n");
@@ -1552,7 +1552,7 @@ bool videoInput::isFrameNew(int id){
     EnterCriticalSection(&VDList[id]->sgCallback->critSection);
         result = VDList[id]->sgCallback->newFrame;
 
-        //we need to give it some time at the begining to start up so lets check after 400 frames
+        //we need to give it some time at the beginning to start up so lets check after 400 frames
         if(VDList[id]->nFramesRunning > 400 && VDList[id]->sgCallback->freezeCheck > VDList[id]->nFramesForReconnect ){
             freeze = true;
         }
@@ -1592,7 +1592,7 @@ bool videoInput::isDeviceSetup(int id) const
 
 // ----------------------------------------------------------------------
 // Gives us a little pop up window to adjust settings
-// We do this in a seperate thread now!
+// We do this in a separate thread now!
 // ----------------------------------------------------------------------
 
 
@@ -1767,7 +1767,7 @@ bool videoInput::setVideoSettingFilter(int deviceID, long Property, long lValue,
         pAMVideoProcAmp->Set(Property, Default, VideoProcAmp_Flags_Auto);
     }
     else{
-        // Perhaps add a check that lValue and Flags are within the range aquired from GetRange above
+        // Perhaps add a check that lValue and Flags are within the range acquired from GetRange above
         pAMVideoProcAmp->Set(Property, lValue, Flags);
     }
 
@@ -1849,7 +1849,7 @@ bool videoInput::setVideoSettingCamera(int deviceID, long Property, long lValue,
             }
             else
             {
-                // Perhaps add a check that lValue and Flags are within the range aquired from GetRange above
+                // Perhaps add a check that lValue and Flags are within the range acquired from GetRange above
                 pIAMCameraControl->Set(Property, lValue, Flags);
             }
             pIAMCameraControl->Release();
@@ -1975,7 +1975,7 @@ videoInput::~videoInput(){
     {
         delete VDList[i];
     }
-    //Unitialize com
+    //Uninitialize com
     comUnInit();
 }
 
@@ -2016,7 +2016,7 @@ bool videoInput::comInit(){
 
 
 // ----------------------------------------------------------------------
-// Same as above but to unitialize com, decreases counter and frees com
+// Same as above but to uninitialize com, decreases counter and frees com
 // if no one else is using it
 // ----------------------------------------------------------------------
 
@@ -2516,7 +2516,7 @@ int videoInput::start(int deviceID, videoDevice *VD){
         return hr;
     }
 
-    //FITLER GRAPH MANAGER//
+    //FILTER GRAPH MANAGER//
     // Create the Filter Graph Manager.
     hr = CoCreateInstance(CLSID_FilterGraph, 0, CLSCTX_INPROC_SERVER,IID_IGraphBuilder, (void**)&VD->pGraph);
     if (FAILED(hr))
@@ -3148,7 +3148,7 @@ HRESULT videoInput::routeCrossbar(ICaptureGraphBuilder2 **ppBuild, IBaseFilter *
             }
             Crossbar->Route(pOIndex,pIndex);
         }else{
-            DebugPrintOut("SETUP: Didn't find specified Physical Connection type. Using Defualt.\n");
+            DebugPrintOut("SETUP: Didn't find specified Physical Connection type. Using Default.\n");
         }
 
         //we only free the crossbar when we close or restart the device
