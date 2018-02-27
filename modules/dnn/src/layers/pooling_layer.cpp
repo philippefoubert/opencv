@@ -158,6 +158,7 @@ public:
             config.pool_method = type == MAX ? LIBDNN_POOLING_METHOD_MAX :
                                 (type == AVE ? LIBDNN_POOLING_METHOD_AVE :
                                                LIBDNN_POOLING_METHOD_STO);
+            config.avePoolPaddedArea = avePoolPaddedArea;
             poolOp = Ptr<OCL4DNNPool<float> >(new OCL4DNNPool<float>(config));
         }
 
@@ -267,7 +268,7 @@ public:
         int poolingType;
         float spatialScale;
 
-        PoolingInvoker() : src(0), rois(0), dst(0), mask(0), nstripes(0),
+        PoolingInvoker() : src(0), rois(0), dst(0), mask(0), avePoolPaddedArea(false), nstripes(0),
                            computeMaxIdx(0), poolingType(MAX), spatialScale(0) {}
 
         static void run(const Mat& src, const Mat& rois, Mat& dst, Mat& mask, Size kernel,
