@@ -4195,7 +4195,7 @@ public:
         CV_Assert(reservedEntries_.empty());
     }
 public:
-    virtual T allocate(size_t size)
+    virtual T allocate(size_t size) CV_OVERRIDE
     {
         AutoLock locker(mutex_);
         BufferEntry entry;
@@ -4210,7 +4210,7 @@ public:
         }
         return entry.clBuffer_;
     }
-    virtual void release(T buffer)
+    virtual void release(T buffer) CV_OVERRIDE
     {
         AutoLock locker(mutex_);
         BufferEntry entry;
@@ -4227,9 +4227,9 @@ public:
         }
     }
 
-    virtual size_t getReservedSize() const { return currentReservedSize; }
-    virtual size_t getMaxReservedSize() const { return maxReservedSize; }
-    virtual void setMaxReservedSize(size_t size)
+    virtual size_t getReservedSize() const CV_OVERRIDE { return currentReservedSize; }
+    virtual size_t getMaxReservedSize() const CV_OVERRIDE { return maxReservedSize; }
+    virtual void setMaxReservedSize(size_t size) CV_OVERRIDE
     {
         AutoLock locker(mutex_);
         size_t oldMaxReservedSize = maxReservedSize;
@@ -4253,7 +4253,7 @@ public:
             _checkSizeOfReservedEntries();
         }
     }
-    virtual void freeAllReservedBuffers()
+    virtual void freeAllReservedBuffers() CV_OVERRIDE
     {
         AutoLock locker(mutex_);
         typename std::list<BufferEntry>::const_iterator i = reservedEntries_.begin();
@@ -4274,7 +4274,7 @@ struct CLBufferEntry
     CLBufferEntry() : clBuffer_((cl_mem)NULL), capacity_(0) { }
 };
 
-class OpenCLBufferPoolImpl : public OpenCLBufferPoolBaseImpl<OpenCLBufferPoolImpl, CLBufferEntry, cl_mem>
+class OpenCLBufferPoolImpl CV_FINAL : public OpenCLBufferPoolBaseImpl<OpenCLBufferPoolImpl, CLBufferEntry, cl_mem>
 {
 public:
     typedef struct CLBufferEntry BufferEntry;
@@ -4320,7 +4320,7 @@ struct CLSVMBufferEntry
     size_t capacity_;
     CLSVMBufferEntry() : clBuffer_(NULL), capacity_(0) { }
 };
-class OpenCLSVMBufferPoolImpl : public OpenCLBufferPoolBaseImpl<OpenCLSVMBufferPoolImpl, CLSVMBufferEntry, void*>
+class OpenCLSVMBufferPoolImpl CV_FINAL : public OpenCLBufferPoolBaseImpl<OpenCLSVMBufferPoolImpl, CLSVMBufferEntry, void*>
 {
 public:
     typedef struct CLSVMBufferEntry BufferEntry;
@@ -4482,7 +4482,7 @@ private:
 #define CV_OPENCL_DATA_PTR_ALIGNMENT 16
 #endif
 
-class OpenCLAllocator : public MatAllocator
+class OpenCLAllocator CV_FINAL : public MatAllocator
 {
     mutable OpenCLBufferPoolImpl bufferPool;
     mutable OpenCLBufferPoolImpl bufferPoolHostPtr;
@@ -4542,7 +4542,7 @@ public:
     }
 
     UMatData* allocate(int dims, const int* sizes, int type,
-                       void* data, size_t* step, int flags, UMatUsageFlags usageFlags) const
+                       void* data, size_t* step, int flags, UMatUsageFlags usageFlags) const CV_OVERRIDE
     {
         if(!useOpenCL())
             return defaultAllocate(dims, sizes, type, data, step, flags, usageFlags);
@@ -4606,7 +4606,7 @@ public:
         return u;
     }
 
-    bool allocate(UMatData* u, int accessFlags, UMatUsageFlags usageFlags) const
+    bool allocate(UMatData* u, int accessFlags, UMatUsageFlags usageFlags) const CV_OVERRIDE
     {
         if(!u)
             return false;
@@ -4738,7 +4738,7 @@ public:
         }
     }*/
 
-    void deallocate(UMatData* u) const
+    void deallocate(UMatData* u) const CV_OVERRIDE
     {
         if(!u)
             return;
@@ -4922,7 +4922,7 @@ public:
     }
 
     // synchronized call (external UMatDataAutoLock, see UMat::getMat)
-    void map(UMatData* u, int accessFlags) const
+    void map(UMatData* u, int accessFlags) const CV_OVERRIDE
     {
         CV_Assert(u && u->handle);
 
@@ -5005,7 +5005,7 @@ public:
         }
     }
 
-    void unmap(UMatData* u) const
+    void unmap(UMatData* u) const CV_OVERRIDE
     {
         if(!u)
             return;
@@ -5150,7 +5150,7 @@ public:
 
     void download(UMatData* u, void* dstptr, int dims, const size_t sz[],
                   const size_t srcofs[], const size_t srcstep[],
-                  const size_t dststep[]) const
+                  const size_t dststep[]) const CV_OVERRIDE
     {
         if(!u)
             return;
@@ -5273,7 +5273,7 @@ public:
 
     void upload(UMatData* u, const void* srcptr, int dims, const size_t sz[],
                 const size_t dstofs[], const size_t dststep[],
-                const size_t srcstep[]) const
+                const size_t srcstep[]) const CV_OVERRIDE
     {
         if(!u)
             return;
@@ -5425,7 +5425,7 @@ public:
 
     void copy(UMatData* src, UMatData* dst, int dims, const size_t sz[],
               const size_t srcofs[], const size_t srcstep[],
-              const size_t dstofs[], const size_t dststep[], bool _sync) const
+              const size_t dstofs[], const size_t dststep[], bool _sync) const CV_OVERRIDE
     {
         if(!src || !dst)
             return;
@@ -5613,7 +5613,7 @@ public:
         }
     }
 
-    BufferPoolController* getBufferPoolController(const char* id) const {
+    BufferPoolController* getBufferPoolController(const char* id) const CV_OVERRIDE {
 #ifdef HAVE_OPENCL_SVM
         if ((svm::checkForceSVMUmatUsage() && (id == NULL || strcmp(id, "OCL") == 0)) || (id != NULL && strcmp(id, "SVM") == 0))
         {

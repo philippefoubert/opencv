@@ -252,6 +252,11 @@ TEST(Layer_Test_BatchNorm, Accuracy)
     testLayerUsingCaffeModels("layer_batch_norm", DNN_TARGET_CPU, true);
 }
 
+TEST(Layer_Test_BatchNorm, local_stats)
+{
+    testLayerUsingCaffeModels("layer_batch_norm_local_stats", DNN_TARGET_CPU, true, false);
+}
+
 TEST(Layer_Test_ReLU, Accuracy)
 {
     testLayerUsingCaffeModels("layer_relu");
@@ -830,5 +835,55 @@ TEST(Layer_Test_Average_pooling_kernel_area, Accuracy)
     Mat out = net.forward();
     normAssert(out, blobFromImage(target));
 }
+
+// Test PriorBoxLayer in case of no aspect ratios (just squared proposals).
+TEST(Layer_PriorBox, squares)
+{
+    LayerParams lp;
+    lp.name = "testPriorBox";
+    lp.type = "PriorBox";
+    lp.set("min_size", 2);
+    lp.set("flip", true);
+    lp.set("clip", true);
+    float variance[] = {0.1f, 0.1f, 0.2f, 0.2f};
+    float aspectRatios[] = {1.0f};  // That should be ignored.
+    lp.set("variance", DictValue::arrayReal<float*>(&variance[0], 4));
+    lp.set("aspect_ratio", DictValue::arrayReal<float*>(&aspectRatios[0], 1));
+
+    Net net;
+    int id = net.addLayerToPrev(lp.name, lp.type, lp);
+    net.connect(0, 0, id, 1);  // The second input is an input image. Shapes are used for boxes normalization.
+    Mat inp(1, 2, CV_32F);
+    randu(inp, -1, 1);
+    net.setInput(blobFromImage(inp));
+    Mat out = net.forward();
+
+    Mat target = (Mat_<float>(4, 4) << 0.0, 0.0, 0.75, 1.0,
+                                       0.25, 0.0, 1.0, 1.0,
+                                       0.1f, 0.1f, 0.2f, 0.2f,
+                                       0.1f, 0.1f, 0.2f, 0.2f);
+    normAssert(out.reshape(1, 4), target);
+}
+
+#ifdef HAVE_INF_ENGINE
+// Using Intel's Model Optimizer generate .xml and .bin files:
+// ./ModelOptimizer -w /path/to/caffemodel -d /path/to/prototxt \
+//                  -p FP32 -i -b ${batch_size} -o /path/to/output/folder
+TEST(Layer_Test_Convolution_DLDT, Accuracy)
+{
+    Net netDefault = readNet(_tf("layer_convolution.caffemodel"), _tf("layer_convolution.prototxt"));
+    Net net = readNet(_tf("layer_convolution.xml"), _tf("layer_convolution.bin"));
+
+    Mat inp = blobFromNPY(_tf("blob.npy"));
+
+    netDefault.setInput(inp);
+    Mat outDefault = netDefault.forward();
+
+    net.setInput(inp);
+    Mat out = net.forward();
+
+    normAssert(outDefault, out);
+}
+#endif  // HAVE_INF_ENGINE
 
 }} // namespace
