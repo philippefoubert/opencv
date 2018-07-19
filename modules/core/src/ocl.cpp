@@ -68,11 +68,12 @@
 #ifdef DEBUG
     #define CV_OPENCL_SHOW_RUN_KERNELS           1
     #define CV_OPENCL_TRACE_CHECK                1
-#else  //DEBUG
+#else   // DEBUG
     #define CV_OPENCL_SHOW_RUN_KERNELS           0
     #define CV_OPENCL_TRACE_CHECK                0
-#endif //DEBUG
+#endif  // DEBUG
 #define CV_OPENCL_VALIDATE_BINARY_PROGRAMS       1
+
 #define CV_OPENCL_SHOW_SVM_ERROR_LOG             1
 #define CV_OPENCL_SHOW_SVM_LOG                   0
 
@@ -2829,10 +2830,6 @@ struct Kernel::Impl
     int nu;
     std::list<Image2D> images;
     bool haveTempDstUMats;
-
-#if CV_OPENCL_SHOW_RUN_ERRORS
-    cv::String kernel_details;
-#endif //CV_OPENCL_SHOW_RUN_ERRORS
 };
 
 }} // namespace cv::ocl
@@ -3664,16 +3661,6 @@ struct Program::Impl
                                                CL_PROGRAM_BUILD_LOG, retsz+1, buffer.data(), &retsz);
             if (log_retval == CL_SUCCESS)
             {
-                // TODO It is useful to see kernel name & program file name also
-                errmsg = String(buffer);
-                printf("OpenCL program build log: %s\n%s\n", buildflags.c_str(), errmsg.c_str());
-#if CV_OPENCL_SHOW_RUN_ERRORS
-              //printf("Kernel: \"%s\"\n", _src.source().c_str());
-                printf("OpenCL - clBuildProgram returned error: %d\n", retval);
-                printf("################################\n");
-#endif //CV_OPENCL_SHOW_RUN_ERRORS
-                fflush(stdout);
-
                 if (retsz < buffer.size())
                     buffer[retsz] = 0;
                 else
