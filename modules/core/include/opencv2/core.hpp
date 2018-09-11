@@ -3009,6 +3009,7 @@ public:
 
     virtual Ptr<Formatted> format(const Mat& mtx) const = 0;
 
+    virtual void set16fPrecision(int p = 4) = 0;
     virtual void set32fPrecision(int p = 8) = 0;
     virtual void set64fPrecision(int p = 16) = 0;
     virtual void setMultiline(bool ml = true) = 0;
@@ -3062,7 +3063,7 @@ public:
 
     /** @brief Stores algorithm parameters in a file storage
     */
-    virtual void write(FileStorage& fs) const { (void)fs; }
+    virtual void write(FileStorage& fs) const { CV_UNUSED(fs); }
 
     /** @brief simplified API for language bindings
     * @overload
@@ -3071,7 +3072,7 @@ public:
 
     /** @brief Reads algorithm parameters from a file storage
     */
-    CV_WRAP virtual void read(const FileNode& fn) { (void)fn; }
+    CV_WRAP virtual void read(const FileNode& fn) { CV_UNUSED(fn); }
 
     /** @brief Returns true if the Algorithm is empty (e.g. in the very beginning or after unsuccessful read
     */
