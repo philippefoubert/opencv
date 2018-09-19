@@ -121,8 +121,10 @@ macro(ocv_assert)
 endmacro()
 
 macro(ocv_debug_message)
-#  string(REPLACE ";" " " __msg "${ARGN}")
-#  message(STATUS "${__msg}")
+  if(OPENCV_CMAKE_DEBUG_MESSAGES)
+    string(REPLACE ";" " " __msg "${ARGN}")
+    message(STATUS "${__msg}")
+  endif()
 endmacro()
 
 macro(ocv_check_environment_variables)
@@ -1087,7 +1089,7 @@ function(ocv_install_3rdparty_licenses library)
     get_filename_component(name "${filename}" NAME)
     install(
       FILES "${filename}"
-      DESTINATION "${OPENCV_OTHER_INSTALL_PATH}/licenses"
+      DESTINATION "${OPENCV_LICENSES_INSTALL_PATH}"
       COMPONENT licenses
       RENAME "${library}-${name}"
       OPTIONAL)

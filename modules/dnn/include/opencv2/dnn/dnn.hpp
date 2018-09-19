@@ -836,7 +836,7 @@ CV__DNN_INLINE_NS_BEGIN
      *  @returns 4-dimensional Mat with NCHW dimensions order.
      */
     CV_EXPORTS_W Mat blobFromImage(InputArray image, double scalefactor=1.0, const Size& size = Size(),
-                                   const Scalar& mean = Scalar(), bool swapRB=true, bool crop=true,
+                                   const Scalar& mean = Scalar(), bool swapRB=false, bool crop=false,
                                    int ddepth=CV_32F);
 
     /** @brief Creates 4-dimensional blob from image.
@@ -845,7 +845,7 @@ CV__DNN_INLINE_NS_BEGIN
      */
     CV_EXPORTS void blobFromImage(InputArray image, OutputArray blob, double scalefactor=1.0,
                                   const Size& size = Size(), const Scalar& mean = Scalar(),
-                                  bool swapRB=true, bool crop=true, int ddepth=CV_32F);
+                                  bool swapRB=false, bool crop=false, int ddepth=CV_32F);
 
 
     /** @brief Creates 4-dimensional blob from series of images. Optionally resizes and
@@ -866,7 +866,7 @@ CV__DNN_INLINE_NS_BEGIN
      *  @returns 4-dimensional Mat with NCHW dimensions order.
      */
     CV_EXPORTS_W Mat blobFromImages(InputArrayOfArrays images, double scalefactor=1.0,
-                                    Size size = Size(), const Scalar& mean = Scalar(), bool swapRB=true, bool crop=true,
+                                    Size size = Size(), const Scalar& mean = Scalar(), bool swapRB=false, bool crop=false,
                                     int ddepth=CV_32F);
 
     /** @brief Creates 4-dimensional blob from series of images.
@@ -875,7 +875,7 @@ CV__DNN_INLINE_NS_BEGIN
      */
     CV_EXPORTS void blobFromImages(InputArrayOfArrays images, OutputArray blob,
                                    double scalefactor=1.0, Size size = Size(),
-                                   const Scalar& mean = Scalar(), bool swapRB=true, bool crop=true,
+                                   const Scalar& mean = Scalar(), bool swapRB=false, bool crop=false,
                                    int ddepth=CV_32F);
 
     /** @brief Parse a 4D blob and output the images it contains as 2D arrays through a simpler data structure
@@ -936,6 +936,13 @@ CV__DNN_INLINE_NS_BEGIN
                              const float score_threshold, const float nms_threshold,
                              CV_OUT std::vector<int>& indices,
                              const float eta = 1.f, const int top_k = 0);
+
+    /** @brief Release a Myriad device is binded by OpenCV.
+     *
+     * Single Myriad device cannot be shared across multiple processes which uses
+     * Inference Engine's Myriad plugin.
+     */
+    CV_EXPORTS_W void resetMyriadDevice();
 
 //! @}
 CV__DNN_INLINE_NS_END
