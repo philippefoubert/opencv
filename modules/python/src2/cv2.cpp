@@ -92,7 +92,7 @@ bool pyopencv_to(PyObject* dst, TYPE& src, const char* name)                    
 {                                                                                                     \
     if (!dst || dst == Py_None)                                                                       \
         return true;                                                                                  \
-    std::underlying_type<TYPE>::type underlying;                                                      \
+    std::underlying_type<TYPE>::type underlying = 0;                                                  \
                                                                                                       \
     if (!pyopencv_to(dst, underlying, name)) return false;                                            \
     src = static_cast<TYPE>(underlying);                                                              \
@@ -1669,6 +1669,7 @@ static int convert_to_char(PyObject *o, char *dst, const char *name = "no_name")
 #  pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #endif
 
+#include "pyopencv_generated_enums.h"
 #include "pyopencv_custom_headers.h"
 #include "pyopencv_generated_types.h"
 #include "pyopencv_generated_funcs.h"
