@@ -7,11 +7,10 @@
 //  copy or use the software.
 //
 //
-//                           License Agreement
+//                        Intel License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2000-2008, Intel Corporation, all rights reserved.
-// Copyright (C) 2008-2012, Willow Garage Inc., all rights reserved.
+// Copyright (C) 2000, Intel Corporation, all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -24,7 +23,7 @@
 //     this list of conditions and the following disclaimer in the documentation
 //     and/or other materials provided with the distribution.
 //
-//   * The name of the copyright holders may not be used to endorse or promote products
+//   * The name of Intel Corporation may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
 //
 // This software is provided by the copyright holders and contributors "as is" and
@@ -40,35 +39,58 @@
 //
 //M*/
 
-#ifndef OPENCV_PHOTO_C_H
-#define OPENCV_PHOTO_C_H
+#include "../test_precomp.hpp"
+#include "opencv2/ts/ocl_test.hpp"
 
-#include "opencv2/core/core_c.h"
+#ifdef HAVE_OPENCL
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace opencv_test { namespace {
 
-/** @addtogroup photo_c
-  @{
-  */
-
-/* Inpainting algorithms */
-enum InpaintingModes
+PARAM_TEST_CASE(OCL_DenseOpticalFlow_DIS, int)
 {
-    CV_INPAINT_NS      =0,
-    CV_INPAINT_TELEA   =1
+    int preset;
+
+    virtual void SetUp()
+    {
+        preset = GET_PARAM(0);
+    }
 };
 
+OCL_TEST_P(OCL_DenseOpticalFlow_DIS, Mat)
+{
+    Mat frame1, frame2, GT;
 
-/* Inpaints the selected region in the image */
-CVAPI(void) cvInpaint( const CvArr* src, const CvArr* inpaint_mask,
-                       CvArr* dst, double inpaintRange, int flags );
+    frame1 = imread(TS::ptr()->get_data_path() + "optflow/RubberWhale1.png");
+    frame2 = imread(TS::ptr()->get_data_path() + "optflow/RubberWhale2.png");
 
-/** @} */
+    CV_Assert(!frame1.empty() && !frame2.empty());
 
-#ifdef __cplusplus
-} //extern "C"
-#endif
+    cvtColor(frame1, frame1, COLOR_BGR2GRAY);
+    cvtColor(frame2, frame2, COLOR_BGR2GRAY);
 
-#endif //OPENCV_PHOTO_C_H
+    Ptr<DenseOpticalFlow> algo;
+
+    // iterate over presets:
+    for (int i = 0; i < cvtest::ocl::test_loop_times; i++)
+    {
+        Mat flow;
+        UMat ocl_flow;
+
+        algo = DISOpticalFlow::create(preset);
+        OCL_OFF(algo->calc(frame1, frame2, flow));
+        OCL_ON(algo->calc(frame1, frame2, ocl_flow));
+        ASSERT_EQ(flow.rows, ocl_flow.rows);
+        ASSERT_EQ(flow.cols, ocl_flow.cols);
+
+        EXPECT_MAT_SIMILAR(flow, ocl_flow, 6e-3);
+    }
+}
+
+OCL_INSTANTIATE_TEST_CASE_P(Video, OCL_DenseOpticalFlow_DIS,
+                            Values(DISOpticalFlow::PRESET_ULTRAFAST,
+                                   DISOpticalFlow::PRESET_FAST,
+                                   DISOpticalFlow::PRESET_MEDIUM));
+
+}} // namespace
+
+#endif // HAVE_OPENCL
