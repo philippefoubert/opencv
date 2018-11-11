@@ -898,11 +898,11 @@ bool useOpenCL()
     CoreTLSData* data = getCoreTlsData().get();
     if( data->useOpenCL < 0 )
     {
-        CV_TRY
+        try
         {
             data->useOpenCL = (int)(haveOpenCL() && Device::getDefault().ptr() && Device::getDefault().available()) ? 1 : 0;
         }
-        CV_CATCH_ALL
+        catch (...)
         {
             data->useOpenCL = 0;
         }
