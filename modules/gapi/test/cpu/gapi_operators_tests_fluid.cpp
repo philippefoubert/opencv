@@ -7,9 +7,8 @@
 
 #include "test_precomp.hpp"
 #include "../common/gapi_operators_tests.hpp"
-#include "opencv2/gapi/cpu/core.hpp"
 
-#define CORE_FLUID cv::gapi::core::cpu::kernels()
+#define CORE_FLUID cv::gapi::core::fluid::kernels()
 
 namespace opencv_test
 {
@@ -29,7 +28,7 @@ INSTANTIATE_TEST_CASE_P(MathOperatorTestFluid, MathOperatorMatMatTest,
 //FIXME: Some Mat/Scalar Fluid kernels are not there yet!
 INSTANTIATE_TEST_CASE_P(DISABLED_MathOperatorTestFluid, MathOperatorMatScalarTest,
                         Combine(Values(AbsExact().to_compare_f()),
-                                Values( opPlus, opPlusR, opMinus, opMinusR, opMul, opMulR, opDiv, opDivR,
+                                Values( opPlus, opPlusR, opMinus, opMinusR, opMul, opMulR,  // FIXIT avoid division by values near zero: opDiv, opDivR,
                                         opGT, opLT, opGE, opLE, opEQ, opNE,
                                         opGTR, opLTR, opGER, opLER, opEQR, opNER),
                                 Values(CV_8UC1, CV_16SC1, CV_32FC1),

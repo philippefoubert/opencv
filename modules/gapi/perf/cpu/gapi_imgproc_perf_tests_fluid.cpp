@@ -7,8 +7,6 @@
 
 #include "../perf_precomp.hpp"
 #include "../common/gapi_imgproc_perf_tests.hpp"
-#include "../../src/backends/fluid/gfluidimgproc.hpp"
-
 
 #define IMGPROC_FLUID cv::gapi::imgproc::fluid::kernels()
 
@@ -26,7 +24,7 @@ namespace opencv_test
             Values(cv::compile_args(IMGPROC_FLUID))));
 
     INSTANTIATE_TEST_CASE_P(SobelPerfTestFluid32F, SobelPerfTest,
-        Combine(Values(AbsToleranceSobel(1e-3).to_compare_f()),
+        Combine(Values(ToleranceFilter(1e-3f, 0.0).to_compare_f()),
             Values(CV_32FC1),
             Values(3),                                     // add 5x5 once supported
             Values(szVGA, sz720p, sz1080p),
@@ -34,5 +32,15 @@ namespace opencv_test
             Values(0, 1),
             Values(1, 2),
             Values(cv::compile_args(IMGPROC_FLUID))));
+
+    INSTANTIATE_TEST_CASE_P(RGB2GrayPerfTestFluid, RGB2GrayPerfTest,
+        Combine(Values(ToleranceColor(1e-3).to_compare_f()),
+                Values(szVGA, sz720p, sz1080p),
+                Values(cv::compile_args(IMGPROC_FLUID))));
+
+    INSTANTIATE_TEST_CASE_P(BGR2GrayPerfTestFluid, BGR2GrayPerfTest,
+        Combine(Values(ToleranceColor(1e-3).to_compare_f()),
+                Values(szVGA, sz720p, sz1080p),
+                Values(cv::compile_args(IMGPROC_FLUID))));
 
 }

@@ -703,7 +703,8 @@ TEST_P(SumTest, AccuracyTest)
     }
     // Comparison //////////////////////////////////////////////////////////////
     {
-        EXPECT_LE(abs(out_sum[0] - out_sum_ocv[0]), tolerance);
+        EXPECT_LE(std::abs(out_sum[0] - out_sum_ocv[0]) / std::max(1.0, std::abs(out_sum_ocv[0])), tolerance)
+            << "OCV=" << out_sum_ocv[0] << "   GAPI=" << out_sum[0];
     }
 }
 
@@ -802,7 +803,8 @@ TEST_P(NormTest, AccuracyTest)
 
     // Comparison //////////////////////////////////////////////////////////////
     {
-        EXPECT_LE(abs(out_norm[0] - out_norm_ocv[0]), tolerance);
+        EXPECT_LE(std::abs(out_norm[0] - out_norm_ocv[0]) / std::max(1.0, std::abs(out_norm_ocv[0])), tolerance)
+            << "OCV=" << out_norm_ocv[0] << "   GAPI=" << out_norm[0];
     }
 }
 
@@ -869,8 +871,8 @@ TEST_P(ThresholdTest, AccuracyTestBinary)
     }
     // Comparison //////////////////////////////////////////////////////////////
     {
-        EXPECT_EQ(0, cv::countNonZero(out_mat_ocv != out_mat_gapi));
-        EXPECT_EQ(out_mat_gapi.size(), sz_in);
+        ASSERT_EQ(out_mat_gapi.size(), sz_in);
+        EXPECT_EQ(0, cv::norm(out_mat_ocv, out_mat_gapi, NORM_L1));
     }
 }
 
@@ -1419,6 +1421,58 @@ TEST_P(ConvertToTest, AccuracyTest)
         EXPECT_EQ(out_mat_gapi.size(), sz_in);
     }
 }
+
+TEST_P(PhaseTest, AccuracyTest)
+{
+    int img_type = -1;
+    cv::Size img_size;
+    bool angle_in_degrees = false;
+    cv::GCompileArgs compile_args;
+    std::tie(img_type, img_size, angle_in_degrees, compile_args) = GetParam();
+    initMatsRandU(img_type, img_size, img_type);
+
+    // G-API code //////////////////////////////////////////////////////////////
+    cv::GMat in_x, in_y;
+    auto out = cv::gapi::phase(in_x, in_y, angle_in_degrees);
+
+    cv::GComputation c(in_x, in_y, out);
+    c.apply(in_mat1, in_mat2, out_mat_gapi, std::move(compile_args));
+
+    // OpenCV code /////////////////////////////////////////////////////////////
+    cv::phase(in_mat1, in_mat2, out_mat_ocv, angle_in_degrees);
+
+    // Comparison //////////////////////////////////////////////////////////////
+    // FIXME: use a comparison functor instead (after enabling OpenCL)
+    {
+        EXPECT_EQ(0, cv::countNonZero(out_mat_ocv != out_mat_gapi));
+    }
+}
+
+TEST_P(SqrtTest, AccuracyTest)
+{
+    int img_type = -1;
+    cv::Size img_size;
+    cv::GCompileArgs compile_args;
+    std::tie(img_type, img_size, compile_args) = GetParam();
+    initMatrixRandU(img_type, img_size, img_type);
+
+    // G-API code //////////////////////////////////////////////////////////////
+    cv::GMat in;
+    auto out = cv::gapi::sqrt(in);
+
+    cv::GComputation c(in, out);
+    c.apply(in_mat1, out_mat_gapi, std::move(compile_args));
+
+    // OpenCV code /////////////////////////////////////////////////////////////
+    cv::sqrt(in_mat1, out_mat_ocv);
+
+    // Comparison //////////////////////////////////////////////////////////////
+    // FIXME: use a comparison functor instead (after enabling OpenCL)
+    {
+        EXPECT_EQ(0, cv::countNonZero(out_mat_ocv != out_mat_gapi));
+    }
+}
+
 
 } // opencv_test
 
