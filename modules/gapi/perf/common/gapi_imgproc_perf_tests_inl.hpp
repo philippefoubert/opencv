@@ -678,7 +678,7 @@ PERF_TEST_P_(RGB2YUVPerfTest, TestPerformance)
 
     TEST_CYCLE()
     {
-        c.apply(in_mat1, out_mat_gapi, std::move(compile_args));
+        c.apply(in_mat1, out_mat_gapi);
     }
 
     // Comparison //////////////////////////////////////////////////////////////
@@ -716,7 +716,7 @@ PERF_TEST_P_(YUV2RGBPerfTest, TestPerformance)
 
     TEST_CYCLE()
     {
-        c.apply(in_mat1, out_mat_gapi, std::move(compile_args));
+        c.apply(in_mat1, out_mat_gapi);
     }
 
     // Comparison //////////////////////////////////////////////////////////////
@@ -754,7 +754,7 @@ PERF_TEST_P_(RGB2LabPerfTest, TestPerformance)
 
     TEST_CYCLE()
     {
-        c.apply(in_mat1, out_mat_gapi, std::move(compile_args));
+        c.apply(in_mat1, out_mat_gapi);
     }
 
     // Comparison //////////////////////////////////////////////////////////////
@@ -792,7 +792,7 @@ PERF_TEST_P_(BGR2LUVPerfTest, TestPerformance)
 
     TEST_CYCLE()
     {
-        c.apply(in_mat1, out_mat_gapi, std::move(compile_args));
+        c.apply(in_mat1, out_mat_gapi);
     }
 
     // Comparison //////////////////////////////////////////////////////////////
@@ -864,7 +864,7 @@ PERF_TEST_P_(BGR2YUVPerfTest, TestPerformance)
 
     TEST_CYCLE()
     {
-        c.apply(in_mat1, out_mat_gapi, std::move(compile_args));
+        c.apply(in_mat1, out_mat_gapi);
     }
 
     EXPECT_TRUE(cmpF(out_mat_gapi, out_mat_ocv));
@@ -894,7 +894,7 @@ PERF_TEST_P_(YUV2BGRPerfTest, TestPerformance)
 
     TEST_CYCLE()
     {
-        c.apply(in_mat1, out_mat_gapi, std::move(compile_args));
+        c.apply(in_mat1, out_mat_gapi);
     }
 
     EXPECT_TRUE(cmpF(out_mat_gapi, out_mat_ocv));

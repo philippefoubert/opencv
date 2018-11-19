@@ -43,4 +43,34 @@ namespace opencv_test
                 Values(szVGA, sz720p, sz1080p),
                 Values(cv::compile_args(IMGPROC_FLUID))));
 
+    INSTANTIATE_TEST_CASE_P(RGB2YUVPerfTestFluid, RGB2YUVPerfTest,
+        Combine(Values(ToleranceColor(1e-3).to_compare_f()),
+                Values(szVGA, sz720p, sz1080p),
+                Values(cv::compile_args(IMGPROC_FLUID))));
+
+    INSTANTIATE_TEST_CASE_P(YUV2RGBPerfTestFluid, YUV2RGBPerfTest,
+        Combine(Values(ToleranceColor(1e-3).to_compare_f()),
+                Values(szVGA, sz720p, sz1080p),
+                Values(cv::compile_args(IMGPROC_FLUID))));
+
+    INSTANTIATE_TEST_CASE_P(BGR2YUVPerfTestFluid, BGR2YUVPerfTest,
+        Combine(Values(ToleranceColor(1e-3).to_compare_f()),
+                Values(szVGA, sz720p, sz1080p),
+                Values(cv::compile_args(IMGPROC_FLUID))));
+
+    INSTANTIATE_TEST_CASE_P(YUV2BGRPerfTestFluid, YUV2BGRPerfTest,
+        Combine(Values(ToleranceColor(1e-3).to_compare_f()),
+                Values(szVGA, sz720p, sz1080p),
+                Values(cv::compile_args(IMGPROC_FLUID))));
+
+    INSTANTIATE_TEST_CASE_P(BGR2LUVPerfTestFluid, BGR2LUVPerfTest,
+        Combine(Values(AbsSimilarPoints(1, 0.05).to_compare_f()),
+                Values(szVGA, sz720p, sz1080p),
+                Values(cv::compile_args(IMGPROC_FLUID))));
+
+    INSTANTIATE_TEST_CASE_P(RGB2LabPerfTestFluid, RGB2LabPerfTest,
+        Combine(Values(AbsSimilarPoints(1, 0.05).to_compare_f()),
+                Values(szVGA, sz720p, sz1080p),
+                Values(cv::compile_args(IMGPROC_FLUID))));
+
 }

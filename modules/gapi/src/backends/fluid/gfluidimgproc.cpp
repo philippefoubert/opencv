@@ -27,7 +27,8 @@
 
 #include "gfluidimgproc_func.hpp"
 
-#include <opencv2/core/hal/intrin.hpp>
+#include "opencv2/imgproc/hal/hal.hpp"
+#include "opencv2/core/hal/intrin.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -126,19 +127,7 @@ static void run_rgb2yuv(Buffer &dst, const View &src, const float coef[5])
 
     int width = dst.length();
 
-    // TODO: Vectorize for SIMD
-    for (int w=0; w < width; w++)
-    {
-        uchar r = in[3*w    ];
-        uchar g = in[3*w + 1];
-        uchar b = in[3*w + 2];
-        float y = coef[0]*r + coef[1]*g + coef[2]*b;
-        float u = coef[3]*(b - y) + 128;
-        float v = coef[4]*(r - y) + 128;
-        out[3*w    ] = saturate<uchar>(y, roundf);
-        out[3*w + 1] = saturate<uchar>(u, roundf);
-        out[3*w + 2] = saturate<uchar>(v, roundf);
-    }
+    run_rgb2yuv_impl(out, in, width, coef);
 }
 
 static void run_yuv2rgb(Buffer &dst, const View &src, const float coef[4])
@@ -154,19 +143,7 @@ static void run_yuv2rgb(Buffer &dst, const View &src, const float coef[4])
 
     int width = dst.length();
 
-    // TODO: Vectorize for SIMD
-    for (int w=0; w < width; w++)
-    {
-        uchar y = in[3*w    ];
-        int   u = in[3*w + 1] - 128;
-        int   v = in[3*w + 2] - 128;
-        float r = y             + coef[0]*v;
-        float g = y + coef[1]*u + coef[2]*v;
-        float b = y + coef[3]*u;
-        out[3*w    ] = saturate<uchar>(r, roundf);
-        out[3*w + 1] = saturate<uchar>(g, roundf);
-        out[3*w + 2] = saturate<uchar>(b, roundf);
-    }
+    run_yuv2rgb_impl(out, in, width, coef);
 }
 
 GAPI_FLUID_KERNEL(GFluidRGB2YUV, cv::gapi::imgproc::GRGB2YUV, false)
@@ -196,6 +173,10 @@ GAPI_FLUID_KERNEL(GFluidYUV2RGB, cv::gapi::imgproc::GYUV2RGB, false)
 //--------------------------------------
 
 enum LabLUV { LL_Lab, LL_LUV };
+
+#define LabLuv_reference 0  // 1=use reference code of RGB/BGR to LUV/Lab, 0=don't
+
+#if LabLuv_reference
 
 // gamma-correction (inverse) for sRGB, 1/gamma=2.4 for inverse, like for Mac OS (?)
 static inline float f_gamma(float x)
@@ -254,22 +235,9 @@ static inline void f_xyz2luv(float  X, float  Y, float  Z,
     v = 13*L * (v1 - vn);
 }
 
-// compile-time parameters: output format (Lab/LUV),
-// and position of blue channel in BGR/RGB (0 or 2)
 template<LabLUV labluv, int blue=0>
-static void run_rgb2labluv(Buffer &dst, const View &src)
+static void run_rgb2labluv_reference(uchar out[], const uchar in[], int width)
 {
-    GAPI_Assert(src.meta().depth == CV_8U);
-    GAPI_Assert(dst.meta().depth == CV_8U);
-    GAPI_Assert(src.meta().chan == 3);
-    GAPI_Assert(dst.meta().chan == 3);
-    GAPI_Assert(src.length() == dst.length());
-
-    const auto *in  = src.InLine<uchar>(0);
-          auto *out = dst.OutLine<uchar>();
-
-    int width = dst.length();
-
     for (int w=0; w < width; w++)
     {
         float R, G, B;
@@ -306,6 +274,42 @@ static void run_rgb2labluv(Buffer &dst, const View &src)
         else
             CV_Error(cv::Error::StsBadArg, "unsupported color conversion");;
     }
+}
+
+#endif  // LabLuv_reference
+
+// compile-time parameters: output format (Lab/LUV),
+// and position of blue channel in BGR/RGB (0 or 2)
+template<LabLUV labluv, int blue=0>
+static void run_rgb2labluv(Buffer &dst, const View &src)
+{
+    GAPI_Assert(src.meta().depth == CV_8U);
+    GAPI_Assert(dst.meta().depth == CV_8U);
+    GAPI_Assert(src.meta().chan == 3);
+    GAPI_Assert(dst.meta().chan == 3);
+    GAPI_Assert(src.length() == dst.length());
+
+    const auto *in  = src.InLine<uchar>(0);
+          auto *out = dst.OutLine<uchar>();
+
+    int width = dst.length();
+
+#if LabLuv_reference
+    run_rgb2labluv_reference<labluv, blue>(out, in, width);
+#else
+    uchar *dst_data = out;
+    const uchar *src_data = in;
+    size_t src_step = width;
+    size_t dst_step = width;
+    int height = 1;
+    int depth = CV_8U;
+    int scn = 3;
+    bool swapBlue = (blue == 2);
+    bool isLab = (LL_Lab == labluv);
+    bool srgb = true;
+    cv::hal::cvtBGRtoLab(src_data, src_step, dst_data, dst_step,
+               width, height, depth, scn, swapBlue, isLab, srgb);
+#endif
 }
 
 GAPI_FLUID_KERNEL(GFluidRGB2Lab, cv::gapi::imgproc::GRGB2Lab, false)
