@@ -2182,7 +2182,7 @@ void videoInput::setPhyCon(int id, int conn){
 
 
 // ----------------------------------------------------------------------
-// Check that we are not trying to setup a non-existant device
+// Check that we are not trying to setup a non-existent device
 // Then start the graph building!
 // ----------------------------------------------------------------------
 
