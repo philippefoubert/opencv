@@ -156,7 +156,7 @@ function(ocv_download)
     ocv_download_log("#cmake_download \"${CACHE_CANDIDATE}\" \"${DL_URL}\"")
     file(DOWNLOAD "${DL_URL}" "${CACHE_CANDIDATE}"
          INACTIVITY_TIMEOUT 60
-         TIMEOUT 600
+         TIMEOUT 6000
          STATUS status
          LOG __log)
     if(NOT OPENCV_SKIP_FILE_DOWNLOAD_DUMP)  # workaround problem with old CMake versions: "Invalid escape sequence"
