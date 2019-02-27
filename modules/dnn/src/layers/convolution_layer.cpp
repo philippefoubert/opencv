@@ -563,11 +563,11 @@ public:
         ieLayer.setGroup((size_t)group);
         ieLayer.setOutDepth((size_t)outCn);
 
-        ieLayer.setWeights(ieWeights);
-        if (ieBiases)
-            ieLayer.setBiases(ieBiases);
-
         InferenceEngine::Builder::Layer l = ieLayer;
+        addConstantData("weights", ieWeights, l);
+        if (ieBiases)
+            addConstantData("biases", ieBiases, l);
+
         if (!padMode.empty())
             l.getParameters()["auto_pad"] = padMode == "VALID" ? std::string("valid") : std::string("same_upper");
 
@@ -1231,10 +1231,7 @@ public:
             const int group = numOutput / outGroupCn;
             if (group != 1)
             {
-#if INF_ENGINE_VER_MAJOR_GE(INF_ENGINE_RELEASE_2018R3)
                 return preferableTarget == DNN_TARGET_CPU;
-#endif
-                return false;
             }
             if (preferableTarget == DNN_TARGET_OPENCL || preferableTarget == DNN_TARGET_OPENCL_FP16)
                 return dilation.width == 1 && dilation.height == 1;
@@ -1287,12 +1284,8 @@ public:
         int dims[] = {inputs[0][0], outCn, outH, outW};
         outputs.resize(inputs.size(), shape(dims, 4));
 
-        internals.push_back(MatShape());
         if (!is1x1())
-            internals[0] = computeColRowShape(inputs[0], outputs[0]);
-
-        if (hasBias())
-            internals.push_back(shape(1, outH*outW));
+            internals.push_back(computeColRowShape(inputs[0], outputs[0]));
 
         return false;
     }
@@ -1795,12 +1788,11 @@ public:
         ieLayer.setGroup((size_t)group);
         ieLayer.setOutDepth((size_t)numOutput);
 
-        ieLayer.setWeights(wrapToInfEngineBlob(blobs[0], InferenceEngine::Layout::OIHW));
+        InferenceEngine::Builder::Layer l = ieLayer;
+        addConstantData("weights", wrapToInfEngineBlob(blobs[0], InferenceEngine::Layout::OIHW), l);
         if (hasBias())
-        {
-            ieLayer.setBiases(wrapToInfEngineBlob(blobs[1], {(size_t)numOutput}, InferenceEngine::Layout::C));
-        }
-        return Ptr<BackendNode>(new InfEngineBackendNode(ieLayer));
+            addConstantData("biases", wrapToInfEngineBlob(blobs[1], {(size_t)numOutput}, InferenceEngine::Layout::C), l);
+        return Ptr<BackendNode>(new InfEngineBackendNode(l));
 #else
         const int outGroupCn = blobs[0].size[1];  // Weights are in IOHW layout
         const int group = numOutput / outGroupCn;
