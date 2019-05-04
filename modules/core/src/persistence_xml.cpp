@@ -792,7 +792,17 @@ public:
         {
             ptr = skipSpaces( ptr, 0 );
 
-            if( *ptr != '\0' )
+            if      ( (strlen(ptr) > 6) && (0 == memcmp(ptr, "<?xml-",    6)) )
+            {
+              // Skip lines such as: <?xml-stylesheet type="text/css" href="style.css"?>
+              ptr = parseTag( ptr, key, type_name, tag_type );
+            }
+            else if ( (strlen(ptr) > 9) && (0 == memcmp(ptr, "<!DOCTYPE", 9)) )
+            {
+              // Skip lines such as: <!DOCTYPE data SYSTEM "data.dtd">
+              ptr = skipSpaces( ptr, CV_XML_INSIDE_COMMENT );
+            }
+            else if( *ptr != '\0' )
             {
                 ptr = parseTag( ptr, key, type_name, tag_type );
                 if( tag_type != CV_XML_OPENING_TAG || key != "opencv_storage" )
