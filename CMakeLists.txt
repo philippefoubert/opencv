@@ -249,6 +249,9 @@ OCV_OPTION(WITH_CUFFT "Include NVidia Cuda Fast Fourier Transform (FFT) library 
 OCV_OPTION(WITH_CUBLAS "Include NVidia Cuda Basic Linear Algebra Subprograms (BLAS) library support" WITH_CUDA
   VISIBLE_IF WITH_CUDA
   VERIFY HAVE_CUBLAS)
+OCV_OPTION(WITH_CUDNN "Include NVIDIA CUDA Deep Neural Network (cuDNN) library support" WITH_CUDA
+  VISIBLE_IF WITH_CUDA
+  VERIFY HAVE_CUDNN)
 OCV_OPTION(WITH_NVCUVID "Include NVidia Video Decoding library support" WITH_CUDA
   VISIBLE_IF WITH_CUDA
   VERIFY HAVE_NVCUVID)
@@ -918,6 +921,9 @@ if(HAVE_CUDA)
   if(HAVE_CUBLAS)
     set(OPENCV_LINKER_LIBS ${OPENCV_LINKER_LIBS} ${CUDA_cublas_LIBRARY})
   endif()
+  if(HAVE_CUDNN)
+    set(OPENCV_LINKER_LIBS ${OPENCV_LINKER_LIBS} ${CUDNN_LIBRARIES})
+  endif()
   if(HAVE_CUFFT)
     set(OPENCV_LINKER_LIBS ${OPENCV_LINKER_LIBS} ${CUDA_cufft_LIBRARY})
   endif()
@@ -1527,11 +1533,16 @@ if(WITH_INF_ENGINE OR INF_ENGINE_TARGET)
   if(INF_ENGINE_TARGET)
     set(__msg "YES (${INF_ENGINE_RELEASE} / ${INF_ENGINE_VERSION})")
     get_target_property(_lib ${INF_ENGINE_TARGET} IMPORTED_LOCATION)
-    if(NOT _lib)
-      get_target_property(_lib_rel ${INF_ENGINE_TARGET} IMPORTED_IMPLIB_RELEASE)
-      get_target_property(_lib_dbg ${INF_ENGINE_TARGET} IMPORTED_IMPLIB_DEBUG)
-      set(_lib "${_lib_rel} / ${_lib_dbg}")
-    endif()
+    get_target_property(_lib_imp_rel ${INF_ENGINE_TARGET} IMPORTED_IMPLIB_RELEASE)
+    get_target_property(_lib_imp_dbg ${INF_ENGINE_TARGET} IMPORTED_IMPLIB_DEBUG)
+    get_target_property(_lib_rel ${INF_ENGINE_TARGET} IMPORTED_LOCATION_RELEASE)
+    get_target_property(_lib_dbg ${INF_ENGINE_TARGET} IMPORTED_LOCATION_DEBUG)
+    ocv_build_features_string(_lib
+      IF _lib THEN "${_lib}"
+      IF _lib_imp_rel AND _lib_imp_dbg THEN "${_lib_imp_rel} / ${_lib_imp_dbg}"
+      IF _lib_rel AND _lib_dbg THEN "${_lib_rel} / ${_lib_dbg}"
+      ELSE "unknown"
+    )
     get_target_property(_inc ${INF_ENGINE_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
     status("    Inference Engine:" "${__msg}")
     status("                libs:" "${_lib}")
@@ -1568,6 +1579,11 @@ if(WITH_CUDA OR HAVE_CUDA)
     status("    NVIDIA GPU arch:"      ${OPENCV_CUDA_ARCH_BIN})
     status("    NVIDIA PTX archs:"     ${OPENCV_CUDA_ARCH_PTX})
   endif()
+ endif()
+
+ if(WITH_CUDNN OR HAVE_CUDNN)
+    status("")
+    status("  cuDNN:" HAVE_CUDNN THEN "YES (ver ${CUDNN_VERSION})" ELSE NO)
 endif()
 
 if(WITH_VULKAN OR HAVE_VULKAN)
