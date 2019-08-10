@@ -23,7 +23,7 @@ struct Model::Impl
     Mat    blob;
     std::vector<String> outNames;
 
-    void predict(Net& net, const Mat& frame, std::vector<Mat>& outs)
+    void predict(Net& net, const Mat& frame, OutputArrayOfArrays outs)
     {
         if (size.empty())
             CV_Error(Error::StsBadSize, "Input size not specified");
@@ -41,15 +41,27 @@ struct Model::Impl
     }
 };
 
+Model::Model() : impl(new Impl) {}
+
 Model::Model(const String& model, const String& config)
     : Net(readNet(model, config)), impl(new Impl)
 {
     impl->outNames = getUnconnectedOutLayersNames();
+    std::vector<MatShape> inLayerShapes;
+    std::vector<MatShape> outLayerShapes;
+    getLayerShapes(MatShape(), 0, inLayerShapes, outLayerShapes);
+    if (!inLayerShapes.empty() && inLayerShapes[0].size() == 4)
+        impl->size = Size(inLayerShapes[0][3], inLayerShapes[0][2]);
 };
 
 Model::Model(const Net& network) : Net(network), impl(new Impl)
 {
     impl->outNames = getUnconnectedOutLayersNames();
+    std::vector<MatShape> inLayerShapes;
+    std::vector<MatShape> outLayerShapes;
+    getLayerShapes(MatShape(), 0, inLayerShapes, outLayerShapes);
+    if (!inLayerShapes.empty() && inLayerShapes[0].size() == 4)
+        impl->size = Size(inLayerShapes[0][3], inLayerShapes[0][2]);
 };
 
 Model& Model::setInputSize(const Size& size)
@@ -100,9 +112,7 @@ void Model::setInputParams(double scale, const Size& size, const Scalar& mean,
 
 void Model::predict(InputArray frame, OutputArrayOfArrays outs)
 {
-    std::vector<Mat> outputs;
-    outs.getMatVector(outputs);
-    impl->predict(*this, frame.getMat(), outputs);
+    impl->predict(*this, frame.getMat(), outs);
 }
 
 ClassificationModel::ClassificationModel(const String& model, const String& config)
