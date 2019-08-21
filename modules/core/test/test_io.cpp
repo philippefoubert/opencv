@@ -1503,6 +1503,61 @@ TEST(Core_InputOutput, FileStorage_LEGACY_KeyPoint_vector)
 }
 #endif
 
+TEST(Core_InputOutput, FileStorage_format_xml_css_dtd)
+{
+    constexpr char content[] =
+"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+"<?xml-stylesheet type=\"text/css\" href=\"mystylesheet.css\"?>\n"
+"<!DOCTYPE kv SYSTEM \"mydtd.dtd\"> <!-- a DTD (Document Type Definition) defines the valid building blocks of an XML document -->\n"
+"<opencv_storage>\n"
+"<kv>\n"
+"  <_>\n"
+"    1. 2. 16. 0. 100. 1 -1</_>\n"
+"  <_>\n"
+"    2. 3. 16. 45. 100. 1 -1</_>\n"
+"  <_>\n"
+"    1. 2. 16. 90. 100. 1 -1</_></kv>\n"
+"</opencv_storage>\n";
+
+    cv::KeyPoint k1(Point2f(1, 2), 16,  0, 100, 1, -1);
+    cv::KeyPoint k2(Point2f(2, 3), 16, 45, 100, 1, -1);
+    cv::KeyPoint k3(Point2f(1, 2), 16, 90, 100, 1, -1);
+    std::vector<cv::KeyPoint> kv;
+    kv.push_back(k1);
+    kv.push_back(k2);
+    kv.push_back(k3);
+
+    cv::String filename = "keypoint.xml";
+    FILE* file = fopen(filename.c_str(), "wt");
+    CV_Assert(nullptr != file && "Cannot open file for writing");
+    if (nullptr != file)
+    {
+        size_t nb_blocks = fwrite(content, sizeof(content), 1, file);
+        CV_Assert(1 == nb_blocks && "Cannot write block in file");
+
+        int ret = fclose(file);
+        CV_Assert(0 == ret && "Cannot close the file");
+    }
+
+    cv::FileStorage fs_read(filename, cv::FileStorage::READ | cv::FileStorage::MEMORY);
+
+    std::vector<cv::KeyPoint> kv_read;
+    cv::FileNode node = fs_read["kv"];
+    CV_Assert(0 == node.empty() && "Cannot find the key");
+    ASSERT_NO_THROW(node >> kv_read);
+
+    ASSERT_EQ(kv.size(), kv_read.size());
+    for (size_t i = 0; i < kv.size(); i++)
+    {
+        EXPECT_EQ(kv[i].pt,       kv_read[i].pt);
+        EXPECT_EQ(kv[i].size,     kv_read[i].size);
+        EXPECT_EQ(kv[i].angle,    kv_read[i].angle);
+        EXPECT_EQ(kv[i].response, kv_read[i].response);
+        EXPECT_EQ(kv[i].octave,   kv_read[i].octave);
+        EXPECT_EQ(kv[i].class_id, kv_read[i].class_id);
+    }
+}
+
 TEST(Core_InputOutput, FileStorage_format_xml)
 {
     FileStorage fs;

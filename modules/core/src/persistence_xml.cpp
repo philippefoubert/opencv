@@ -815,13 +815,22 @@ public:
 
             if      ( (strlen(ptr) > 6) && (0 == memcmp(ptr, "<?xml-",    6)) )
             {
-              // Skip lines such as: <?xml-stylesheet type="text/css" href="style.css"?>
-              ptr = parseTag( ptr, key, type_name, tag_type );
+                // Skip lines such as: <?xml-stylesheet type="text/css" href="style.css"?>
+                ptr = parseTag( ptr, key, type_name, tag_type );
             }
-            else if ( (strlen(ptr) > 9) && (0 == memcmp(ptr, "<!DOCTYPE", 9)) )
+            else if ( (strlen(ptr) > 9) && ( (0 == memcmp(ptr, "<!DOCTYPE", 9)) ||
+                                             (0 == memcmp(ptr, "<!ELEMENT", 9)) ||
+                                             (0 == memcmp(ptr, "<!ATTLIST", 9)) ) )
             {
-              // Skip lines such as: <!DOCTYPE data SYSTEM "data.dtd">
-              ptr = skipSpaces( ptr, CV_XML_INSIDE_COMMENT );
+                // Skip lines such as: <!DOCTYPE data SYSTEM "data.dtd">
+                char c;
+                ptr += 9;
+                do c = *++ptr;
+                while( cv_isprint_or_tab(c) && (c != '>') );
+                if( c == '>' )
+                {
+                    ptr++;
+                }
             }
             else if( *ptr != '\0' )
             {
