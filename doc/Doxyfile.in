@@ -102,7 +102,12 @@ WARN_FORMAT            = "$file:$line: $text"
 WARN_LOGFILE           =
 INPUT                  = @CMAKE_DOXYGEN_INPUT_LIST@
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          =
+FILE_PATTERNS          = *.c \
+                         *.cpp \
+                         *.h \
+                         *.hpp \
+                         *.cl \
+                         *.markdown
 RECURSIVE              = YES
 EXCLUDE                = @CMAKE_DOXYGEN_EXCLUDE_LIST@
 EXCLUDE_SYMLINKS       = NO
