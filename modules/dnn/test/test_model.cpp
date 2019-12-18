@@ -70,6 +70,28 @@ public:
         ASSERT_NEAR(prediction.second, ref.second, norm);
     }
 
+    void testKeypointsModel(const std::string& weights, const std::string& cfg,
+                            const Mat& frame, const Mat& exp, float norm,
+                            const Size& size = {-1, -1}, Scalar mean = Scalar(),
+                            double scale = 1.0, bool swapRB = false, bool crop = false)
+    {
+        checkBackend();
+
+        std::vector<Point2f> points;
+
+        KeypointsModel model(weights, cfg);
+        model.setInputSize(size).setInputMean(mean).setInputScale(scale)
+             .setInputSwapRB(swapRB).setInputCrop(crop);
+
+        model.setPreferableBackend(backend);
+        model.setPreferableTarget(target);
+
+        points = model.estimate(frame, 0.5);
+
+        Mat out = Mat(points).reshape(1);
+        normAssert(exp, out, "", norm, norm);
+    }
+
     void testSegmentationModel(const std::string& weights_file, const std::string& config_file,
                                const std::string& inImgPath, const std::string& outImgPath,
                                float norm, const Size& size = {-1, -1}, Scalar mean = Scalar(),
@@ -219,6 +241,50 @@ TEST_P(Test_Model, DetectionMobilenetSSD)
 
     testDetectModel(weights_file, config_file, img_path, refClassIds, refConfidences, refBoxes,
                     scoreDiff, iouDiff, confThreshold, nmsThreshold, size, mean, scale);
+}
+
+TEST_P(Test_Model, Keypoints_pose)
+{
+    if (target == DNN_TARGET_OPENCL_FP16)
+        applyTestTag(CV_TEST_TAG_DNN_SKIP_OPENCL_FP16);
+#ifdef HAVE_INF_ENGINE
+    if (target == DNN_TARGET_MYRIAD)
+        applyTestTag(CV_TEST_TAG_DNN_SKIP_IE_MYRIAD, CV_TEST_TAG_DNN_SKIP_IE_VERSION);
+#endif
+
+    Mat inp = imread(_tf("pose.png"));
+    std::string weights = _tf("onnx/models/lightweight_pose_estimation.onnx");
+    Mat exp = blobFromNPY(_tf("keypoints_exp.npy"));
+
+
+    Size size{256, 256};
+    float norm = 1e-4;
+    double scale = 1.0/255;
+    Scalar mean = Scalar(128, 128, 128);
+    bool swapRB = false;
+
+    testKeypointsModel(weights, "", inp, exp, norm, size, mean, scale, swapRB);
+}
+
+TEST_P(Test_Model, Keypoints_face)
+{
+#if defined(INF_ENGINE_RELEASE)
+    if (backend == DNN_BACKEND_INFERENCE_ENGINE_NN_BUILDER_2019)
+        applyTestTag(CV_TEST_TAG_DNN_SKIP_IE_NN_BUILDER, CV_TEST_TAG_DNN_SKIP_IE_VERSION);
+#endif
+
+    Mat inp = imread(_tf("gray_face.png"), 0);
+    std::string weights = _tf("onnx/models/facial_keypoints.onnx");
+    Mat exp = blobFromNPY(_tf("facial_keypoints_exp.npy"));
+
+    Size size{224, 224};
+    float norm = (target == DNN_TARGET_OPENCL_FP16) ? 5e-3 : 1e-4;
+    double scale = 1.0/255;
+    Scalar mean = Scalar();
+    bool swapRB = false;
+
+    testKeypointsModel(weights, "", inp, exp, norm, size, mean, scale, swapRB);
+
 }
 
 TEST_P(Test_Model, Detection_normalized)
