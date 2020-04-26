@@ -309,11 +309,30 @@ static void addConstant(const std::string& name,
     outShapes.insert(std::make_pair(name, shape(blob)));
 }
 
+void addConstantNodesForInitializers(opencv_onnx::GraphProto& graph_proto)
+{
+    int num_initializers = graph_proto.initializer_size();
+    for (int id = 0; id < num_initializers; id++)
+    {
+        opencv_onnx::TensorProto initializer = graph_proto.initializer(id);
+        opencv_onnx::NodeProto* constant_node = graph_proto.add_node();
+        constant_node->set_op_type("Constant");
+        constant_node->set_name(initializer.name());
+        constant_node->add_output(initializer.name());
+        opencv_onnx::AttributeProto* value = constant_node->add_attribute();
+        opencv_onnx::TensorProto* tensor = initializer.New();
+        tensor->CopyFrom(initializer);
+        releaseONNXTensor(initializer);
+        value->set_allocated_t(tensor);
+    }
+}
+
 void ONNXImporter::populateNet(Net dstNet)
 {
     CV_Assert(model_proto.has_graph());
     opencv_onnx::GraphProto graph_proto = model_proto.graph();
 
+    addConstantNodesForInitializers(graph_proto);
     simplifySubgraphs(graph_proto);
 
     std::map<std::string, Mat> constBlobs = getGraphTensors(graph_proto);
@@ -1397,8 +1416,7 @@ void ONNXImporter::populateNet(Net dstNet)
                 CV_Assert(layer_id.find(node_proto.input(i)) == layer_id.end());
 
             String interp_mode = layerParams.get<String>("coordinate_transformation_mode");
-            CV_Assert_N(interp_mode != "tf_crop_and_resize", interp_mode != "asymmetric",
-                        interp_mode != "tf_half_pixel_for_nn");
+            CV_Assert_N(interp_mode != "tf_crop_and_resize", interp_mode != "tf_half_pixel_for_nn");
 
             layerParams.set("align_corners", interp_mode == "align_corners");
             Mat shapes = getBlob(node_proto, constBlobs, node_proto.input_size() - 1);
@@ -1426,6 +1444,22 @@ void ONNXImporter::populateNet(Net dstNet)
         }
         else if (layer_type == "Upsample")
         {
+            //fused from Resize Subgraph
+            if (layerParams.has("coordinate_transformation_mode"))
+            {
+                String interp_mode = layerParams.get<String>("coordinate_transformation_mode");
+                CV_Assert_N(interp_mode != "tf_crop_and_resize", interp_mode != "tf_half_pixel_for_nn");
+
+                layerParams.set("align_corners", interp_mode == "align_corners");
+                if (layerParams.get<String>("mode") == "linear")
+                {
+                    layerParams.set("mode", interp_mode == "pytorch_half_pixel" ?
+                                            "opencv_linear" : "bilinear");
+                }
+            }
+            if (layerParams.get<String>("mode") == "linear" && framework_name == "pytorch")
+                layerParams.set("mode", "opencv_linear");
+
             layerParams.type = "Resize";
             if (layerParams.has("scales"))
             {
@@ -1435,22 +1469,21 @@ void ONNXImporter::populateNet(Net dstNet)
                 layerParams.set("zoom_factor_y", scales.getIntValue(2));
                 layerParams.set("zoom_factor_x", scales.getIntValue(3));
             }
-            else
+            else if (layerParams.has("height_scale") && layerParams.has("width_scale"))
             {
                 // Caffe2 layer
                 replaceLayerParam(layerParams, "height_scale", "zoom_factor_y");
                 replaceLayerParam(layerParams, "width_scale", "zoom_factor_x");
             }
-            replaceLayerParam(layerParams, "mode", "interpolation");
-
-            if (layerParams.get<String>("interpolation") == "linear" && framework_name == "pytorch") {
-                layerParams.type = "Resize";
+            else
+            {
+                // scales as input
                 Mat scales = getBlob(node_proto, constBlobs, 1);
                 CV_Assert(scales.total() == 4);
-                layerParams.set("interpolation", "opencv_linear");
                 layerParams.set("zoom_factor_y", scales.at<float>(2));
                 layerParams.set("zoom_factor_x", scales.at<float>(3));
             }
+            replaceLayerParam(layerParams, "mode", "interpolation");
         }
         else if (layer_type == "SoftMax" || layer_type == "LogSoftmax")
         {

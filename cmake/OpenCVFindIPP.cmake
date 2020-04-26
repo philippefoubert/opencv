@@ -163,7 +163,7 @@ macro(ipp_detect_version)
           ocv_install_target(${IPP_PREFIX}_mingw_fix EXPORT OpenCVModules ARCHIVE DESTINATION ${OPENCV_3P_LIB_INSTALL_PATH} COMPONENT dev)
           list(APPEND IPP_LIBRARIES ${IPP_PREFIX}_mingw_fix)
         endif(WIN32 AND MINGW)
-        if (NOT BUILD_SHARED_LIBS)
+        if (NOT BUILD_SHARED_LIBS AND (HAVE_IPP_ICV OR ";${OPENCV_INSTALL_EXTERNAL_DEPENDENCIES};" MATCHES ";ipp;"))
           # CMake doesn't support "install(TARGETS ${IPP_PREFIX}${name} " command with imported targets
           install(FILES ${IPP_LIBRARY_DIR}/${IPP_LIB_PREFIX}${IPP_PREFIX}${name}${IPP_SUFFIX}${IPP_LIB_SUFFIX}
                   DESTINATION ${OPENCV_3P_LIB_INSTALL_PATH} COMPONENT dev)
