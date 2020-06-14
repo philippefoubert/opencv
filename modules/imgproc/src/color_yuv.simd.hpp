@@ -5,6 +5,13 @@
 #include "precomp.hpp"
 #include "opencv2/core/hal/intrin.hpp"
 
+// PFO - The symbol "scr1" is defined in the mingw-w64 runtime package
+// PFO - in "mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw64\x86_64-w64-mingw32\include\dlgs.h"
+// PFO - (included through "windows.h" for example).
+#if defined scr1
+#  undef scr1
+#endif  // scr1
+
 namespace cv {
 namespace hal {
 CV_CPU_OPTIMIZATION_NAMESPACE_BEGIN
