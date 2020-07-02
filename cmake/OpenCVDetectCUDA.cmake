@@ -8,7 +8,10 @@ if(NOT UNIX AND CV_CLANG)
   return()
 endif()
 
-
+if(CUDA_HOST_COMPILER)
+  # respect the CUDA_HOST_COMPILER if specified manually
+  set(PREFERRED_CUDA_HOST_COMPILER "${CUDA_HOST_COMPILER}")
+endif()
 if(((NOT CMAKE_VERSION VERSION_LESS "3.9.0")  # requires https://gitlab.kitware.com/cmake/cmake/merge_requests/663
       OR OPENCV_CUDA_FORCE_EXTERNAL_CMAKE_MODULE)
     AND NOT OPENCV_CUDA_FORCE_BUILTIN_CMAKE_MODULE)
@@ -28,6 +31,11 @@ endif()
 
 if(CUDA_FOUND)
   set(HAVE_CUDA 1)
+  if(NOT CUDA_VERSION VERSION_LESS 11.0)
+    # CUDA 11.0 removes nppicom
+    ocv_list_filterout(CUDA_nppi_LIBRARY "nppicom")
+    ocv_list_filterout(CUDA_npp_LIBRARY "nppicom")
+  endif()
 
   if(WITH_CUFFT)
     set(HAVE_CUFFT 1)
@@ -107,8 +115,8 @@ if(CUDA_FOUND)
     unset(CUDA_ARCH_PTX CACHE)
   endif()
 
-  if(CUDA_HOST_COMPILER)
-    LIST(APPEND CUDA_NVCC_FLAGS -ccbin ${CUDA_HOST_COMPILER})
+  if(PREFERRED_CUDA_HOST_COMPILER)
+    LIST(APPEND CUDA_NVCC_FLAGS -ccbin "${PREFERRED_CUDA_HOST_COMPILER}")
   else()
     if(WIN32 AND CMAKE_LINKER) #Workaround for VS cl.exe not being in the env. path
       get_filename_component(host_compiler_bindir ${CMAKE_LINKER} DIRECTORY)
@@ -328,7 +336,14 @@ if(CUDA_FOUND)
     endif()
 
     if(UNIX OR APPLE)
-      set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Xcompiler -fPIC --std=c++11)
+      set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Xcompiler -fPIC)
+      if(NOT " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE} ${CMAKE_CXX_FLAGS_DEBUG} ${CUDA_NVCC_FLAGS}" MATCHES "-std=")
+        if(CUDA_VERSION VERSION_LESS "11.0")
+          list(APPEND CUDA_NVCC_FLAGS "--std=c++11")
+        else()
+          list(APPEND CUDA_NVCC_FLAGS "--std=c++14")
+        endif()
+      endif()
     endif()
     if(APPLE)
       set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Xcompiler -fno-finite-math-only)
