@@ -86,6 +86,19 @@ macro(ippiw_setup PATH BUILD)
           execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OpenCV_SOURCE_DIR}/3rdparty/ippicv/CMakeLists.txt" "${IPP_IW_PATH}/")
           add_subdirectory("${IPP_IW_PATH}/" ${OpenCV_BINARY_DIR}/3rdparty/ippiw)
 
+          if(MINGW)
+            # The __try and __except is (as Microsoft states) an extension to the C/C++
+            # language. It is not portable in gcc (and the __try1 define available in
+            # the MinGW header "excpt.h" is buggy).
+            # Since the file we need to modify "3rdparty/ippicv/ippicv_win/iw/src/iw_own.c"
+            # will only be imported at compilation time, we can't use a patch.
+            file(WRITE ${IPP_IW_PATH}/ippiw_extra_options.rsp
+              "-D__try=\n"
+              "-D__except(EXCEPTION_EXECUTE_HANDLER)=if(0)")
+            set_property(TARGET ${IPP_IW_LIBRARY} APPEND PROPERTY COMPILE_OPTIONS
+             "@${IPP_IW_PATH}/ippiw_extra_options.rsp")
+          endif()
+
           set(HAVE_IPP_IW 1)
           set(FILE "${PATH}/include/iw/iw_ll.h") # check if Intel IPP Integration Wrappers is OpenCV specific
           if(EXISTS "${FILE}")
