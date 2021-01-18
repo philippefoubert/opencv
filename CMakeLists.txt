@@ -477,7 +477,7 @@ OCV_OPTION(INSTALL_TESTS            "Install accuracy and performance test binar
 
 # OpenCV build options
 # ===================================================
-OCV_OPTION(ENABLE_CCACHE              "Use ccache"                                               (UNIX AND NOT IOS AND (CMAKE_GENERATOR MATCHES "Makefile" OR CMAKE_GENERATOR MATCHES "Ninja")) )
+OCV_OPTION(ENABLE_CCACHE              "Use ccache"                                               (UNIX AND (CMAKE_GENERATOR MATCHES "Makefile" OR CMAKE_GENERATOR MATCHES "Ninja" OR CMAKE_GENERATOR MATCHES "Xcode")) )
 OCV_OPTION(ENABLE_PRECOMPILED_HEADERS "Use precompiled headers"                                  MSVC IF (MSVC OR (NOT IOS AND NOT CMAKE_CROSSCOMPILING) ) )
 OCV_OPTION(ENABLE_SOLUTION_FOLDERS    "Solution folder in Visual Studio or in other IDEs"        (MSVC_IDE OR CMAKE_GENERATOR MATCHES Xcode) )
 OCV_OPTION(ENABLE_PROFILING           "Enable profiling in the GCC compiler (Add flags: -g -pg)" OFF  IF CV_GCC )
@@ -1047,7 +1047,9 @@ endif()
 if(CMAKE_GENERATOR MATCHES Xcode)
   status("    Xcode:"          ${XCODE_VERSION})
 endif()
-if(NOT CMAKE_GENERATOR MATCHES "Xcode|Visual Studio")
+if(CMAKE_GENERATOR MATCHES "Xcode|Visual Studio|Multi-Config")
+  status("    Configuration:"  ${CMAKE_CONFIGURATION_TYPES})
+else()
   status("    Configuration:"  ${CMAKE_BUILD_TYPE})
 endif()
 
