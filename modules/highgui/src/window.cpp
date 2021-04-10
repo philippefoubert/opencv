@@ -95,7 +95,7 @@ CV_IMPL void cvSetWindowProperty(const char* name, int prop_id, double prop_valu
     case cv::WND_PROP_VSYNC:
         #if defined (HAVE_QT)
             // nothing
-        #elif defined(HAVE_WIN32UI)
+        #elif defined (HAVE_WIN32UI)
             cvSetPropVsync_W32(name, (prop_value != 0));
         #else
             // not implemented yet for other toolkits
