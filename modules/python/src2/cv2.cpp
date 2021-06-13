@@ -6,6 +6,12 @@
 #pragma warning(disable:5033)  // 'register' is no longer a supported storage class
 #endif
 
+// To fix the error when building with MinGW:
+//   [...]/include/c++/cmath:1121:11: error: '::hypot' has not been declared
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#   define _hypot hypot
+#endif
+
 // #define CVPY_DYNAMIC_INIT
 // #define Py_DEBUG
 
